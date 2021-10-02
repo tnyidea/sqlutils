@@ -48,7 +48,7 @@ func SqlColumnsForValue(v interface{}, filterCols ...string) (cols []string) {
 			log.Println("invalid filter: " + filterCols[0])
 			return nil
 		}
-		omitColIndex = typeutils.IndexStringSlice(strings.Split(tokens[1], ","))
+		omitColIndex = IndexStringSlice(strings.Split(tokens[1], ","))
 	}
 
 	val := reflect.ValueOf(v)
@@ -118,7 +118,7 @@ func (d *DataService) ValidSqlColumnsForValue(v interface{}, table string, filte
 
 	// Value Columns
 	valueCols := SqlColumnsForValue(v)
-	valueColIndex := typeutils.IndexStringSlice(valueCols)
+	valueColIndex := IndexStringSlice(valueCols)
 	includeFilter := strings.Split(filterIndex["include"], ",")
 	for _, col := range includeFilter {
 		if !valueColIndex[col] {
@@ -126,7 +126,7 @@ func (d *DataService) ValidSqlColumnsForValue(v interface{}, table string, filte
 		}
 	}
 
-	omitColIndex := typeutils.IndexStringSlice(strings.Split(filterIndex["omit"], ","))
+	omitColIndex := IndexStringSlice(strings.Split(filterIndex["omit"], ","))
 	var cols []string
 	for _, col := range valueCols {
 		if !omitColIndex[col] {
@@ -143,7 +143,7 @@ func (d *DataService) ValidSqlColumnsForValue(v interface{}, table string, filte
 	if err != nil {
 		return false, err
 	}
-	tableColIndex := typeutils.IndexStringSlice(tableCols)
+	tableColIndex := IndexStringSlice(tableCols)
 	for _, col := range includeFilter {
 		if !tableColIndex[col] {
 			tableCols = append(tableCols, col)
@@ -174,7 +174,7 @@ func SqlValueSource(v interface{}, filterCols ...string) (src []interface{}) {
 			log.Println("invalid filter: " + filterCols[0])
 			return nil
 		}
-		omitColIndex = typeutils.IndexStringSlice(strings.Split(tokens[1], ","))
+		omitColIndex = IndexStringSlice(strings.Split(tokens[1], ","))
 	}
 
 	val := reflect.ValueOf(v)
