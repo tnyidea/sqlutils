@@ -5,8 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"github.com/fubotv/smo-content-operations/utils/typeutils"
-	"github.com/lib/pq"
+	_ "github.com/lib/pq"
 	"log"
 	"reflect"
 	"sort"
@@ -105,7 +104,6 @@ func (d *DataService) SqlColumnsForTable(table string) (cols []string, err error
 	return cols, nil
 }
 
-// TODO Fix this for the case where there is no sql tag -- see CrackleMRSSVODItem
 func (d *DataService) ValidSqlColumnsForValue(v interface{}, table string, filterCols ...string) (bool, error) {
 	filterIndex := map[string]string{"include": "", "omit": ""}
 	if filterCols != nil {
