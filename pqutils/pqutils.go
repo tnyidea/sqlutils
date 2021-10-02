@@ -3,8 +3,10 @@ package pqutils
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
+	"github.com/gbnyc26/sqlutils"
+	"github.com/gbnyc26/typeutils"
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 	"log"
 	"reflect"
@@ -19,6 +21,7 @@ type DataService struct {
 
 // Article on connection pooling
 // http://go-database-sql.org/connection-pool.html
+
 func New(url string) (r DataService, err error) {
 	// Open Connection
 	db, err := sql.Open("postgres", url)
@@ -39,6 +42,7 @@ func (d *DataService) Close() {
 }
 
 // Columns
+
 func SqlColumnsForValue(v interface{}, filterCols ...string) (cols []string) {
 	// we only need omit here, so going to assume that omit is only included in filterCols
 	omitColIndex := make(map[string]bool)
@@ -48,7 +52,7 @@ func SqlColumnsForValue(v interface{}, filterCols ...string) (cols []string) {
 			log.Println("invalid filter: " + filterCols[0])
 			return nil
 		}
-		omitColIndex = IndexStringSlice(strings.Split(tokens[1], ","))
+		omitColIndex = typeutils.IndexStringSlice(strings.Split(tokens[1], ","))
 	}
 
 	val := reflect.ValueOf(v)
@@ -118,7 +122,7 @@ func (d *DataService) ValidSqlColumnsForValue(v interface{}, table string, filte
 
 	// Value Columns
 	valueCols := SqlColumnsForValue(v)
-	valueColIndex := IndexStringSlice(valueCols)
+	valueColIndex := typeutils.IndexStringSlice(valueCols)
 	includeFilter := strings.Split(filterIndex["include"], ",")
 	for _, col := range includeFilter {
 		if !valueColIndex[col] {
@@ -126,7 +130,7 @@ func (d *DataService) ValidSqlColumnsForValue(v interface{}, table string, filte
 		}
 	}
 
-	omitColIndex := IndexStringSlice(strings.Split(filterIndex["omit"], ","))
+	omitColIndex := typeutils.IndexStringSlice(strings.Split(filterIndex["omit"], ","))
 	var cols []string
 	for _, col := range valueCols {
 		if !omitColIndex[col] {
@@ -143,7 +147,7 @@ func (d *DataService) ValidSqlColumnsForValue(v interface{}, table string, filte
 	if err != nil {
 		return false, err
 	}
-	tableColIndex := IndexStringSlice(tableCols)
+	tableColIndex := typeutils.IndexStringSlice(tableCols)
 	for _, col := range includeFilter {
 		if !tableColIndex[col] {
 			tableCols = append(tableCols, col)
@@ -165,6 +169,7 @@ func (d *DataService) ValidSqlColumnsForValue(v interface{}, table string, filte
 }
 
 // Marshal/Unmarshal Column Values
+
 func SqlValueSource(v interface{}, filterCols ...string) (src []interface{}) {
 	// we only need omit here, so going to assume that omit is only included in filterCols
 	omitColIndex := make(map[string]bool)
@@ -174,7 +179,7 @@ func SqlValueSource(v interface{}, filterCols ...string) (src []interface{}) {
 			log.Println("invalid filter: " + filterCols[0])
 			return nil
 		}
-		omitColIndex = IndexStringSlice(strings.Split(tokens[1], ","))
+		omitColIndex = typeutils.IndexStringSlice(strings.Split(tokens[1], ","))
 	}
 
 	val := reflect.ValueOf(v)
@@ -232,6 +237,7 @@ func SqlScanDestination(v interface{}) (r []interface{}) {
 }
 
 // Table Operations
+
 func (d *DataService) CreateTableFromQuery(newTable string, sourceQuery string) (err error) {
 	ctx := context.Background()
 	conn, err := d.Db.Conn(ctx)
@@ -310,32 +316,8 @@ func (d *DataService) DeleteTable(table string) (err error) {
 	return err
 }
 
-// Query Options
-type QueryOptions struct {
-	FilterColumn string
-	FilterValue  string
-	SortColumn   string
-	SortOrder    string
-	Count        int
-	RangeStart   int
-	RangeEnd     int
-}
-
-func (p *QueryOptions) IsZero() bool {
-	return reflect.DeepEqual(*p, QueryOptions{})
-}
-
-func (p *QueryOptions) Bytes() []byte {
-	b, _ := json.Marshal(p)
-	return b
-}
-
-func (p *QueryOptions) String() string {
-	b, _ := json.MarshalIndent(p, "", "    ")
-	return string(b)
-}
-
 // Standard Queries
+
 func (d *DataService) BulkCreate(v []interface{}, table string, filterCols ...string) (err error) {
 	ctx := context.Background()
 	conn, err := d.Db.Conn(ctx)
@@ -415,19 +397,19 @@ func (d *DataService) Count(table string, where string, args ...interface{}) (r 
 	return r, nil
 }
 
-// TODO a performance test to see if the call to scan the tags adds latency
 func SqlFind(table string, columns string, where string) string {
-	return SqlFindAll(table, columns, where, QueryOptions{})
+	// TODO a performance test to see if the call to scan the tags adds latency
+	return SqlFindAll(table, columns, where, sqlutils.QueryOptions{})
 }
 
-func SqlFindAll(table string, columns string, where string, q QueryOptions) string {
+func SqlFindAll(table string, columns string, where string, q sqlutils.QueryOptions) string {
 	return `
         SELECT id, ` + columns + `
         FROM ` + table +
 		SqlQueryOptions(where, q)
 }
 
-func SqlQueryOptions(where string, q QueryOptions) (r string) {
+func SqlQueryOptions(where string, q sqlutils.QueryOptions) (r string) {
 	var tokens []string
 	if where != "" {
 		tokens = append(tokens, where)

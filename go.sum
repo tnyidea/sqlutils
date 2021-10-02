@@ -1,2 +1,4 @@
+github.com/gbnyc26/typeutils v0.0.0-20211002125159-8909138d1a1a h1:dLhetR7ys55TT4u/qaFPNTO7v171YqfPu1H9W31Oyls=
+github.com/gbnyc26/typeutils v0.0.0-20211002125159-8909138d1a1a/go.mod h1:KGJ5D9WuveCyRoKw/XLWkmyputd/bQ/SkQy7Wkk84Vc=
 github.com/lib/pq v1.10.3 h1:v9QZf2Sn6AmjXtQeFpdoq/eaNtYP6IN+7lcrygsIAtg=
 github.com/lib/pq v1.10.3/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
