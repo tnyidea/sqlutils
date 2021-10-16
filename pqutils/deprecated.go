@@ -1,5 +1,6 @@
 package pqutils
 
+/*
 import (
 	"context"
 	"errors"
@@ -109,37 +110,6 @@ func SqlValueSource(v interface{}, filterCols ...string) (src []interface{}) {
 	return src
 }
 
-func SqlScanDestination(v interface{}) (r []interface{}) {
-	val := reflect.ValueOf(v).Elem()
-	if val.Kind() != reflect.Struct {
-		return nil
-	}
-
-	valptr := reflect.ValueOf(v)
-	valtype := val.Type()
-	for i := 0; i < valtype.NumField(); i++ {
-		field := valtype.Field(i)
-		if col, ok := field.Tag.Lookup("sql"); ok {
-			if col == "id" || col == "created_at" || col == "updated_at" {
-				r = append(r, valptr.Elem().Field(i).Addr().Interface())
-				continue
-			}
-			if col != "" {
-				if valptr.Elem().Field(i).Kind() == reflect.Slice {
-					r = append(r, pq.Array(valptr.Elem().Field(i).Addr().Interface()))
-				} else {
-					r = append(r, valptr.Elem().Field(i).Addr().Interface())
-				}
-			}
-		}
-	}
-
-	if len(r) == 0 {
-		return nil
-	}
-
-	return r
-}
 
 // Table Operations
 
@@ -358,3 +328,5 @@ func DeleteAll(table string) (err error) {
 	_, err = conn.ExecContext(ctx, query)
 	return err
 }
+
+*/
