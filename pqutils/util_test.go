@@ -7,17 +7,22 @@ import (
 	"log"
 	"reflect"
 	"sort"
-	"strings"
 	"testing"
 )
 
-type TestUtilConfig struct {
-	DbUrl string `env:"TEST_DB_URL"`
-}
-
 func TestCreateTableFromType(t *testing.T) {
-	var config TestUtilConfig
-	err := configurator.SetEnvFromFile("util_test.env")
+	type testConfig struct {
+		DbUrl string `env:"TEST_DB_URL"`
+	}
+	type testType struct {
+		Id         int    `sql:"id,primarykey"`
+		FirstName  string `sql:"first_name"`
+		MiddleName string `sql:"middle_name"`
+		LastName   string `sql:"last_name,unique"`
+	}
+
+	var config testConfig
+	err := configurator.SetEnvFromFile("test.env")
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
@@ -28,20 +33,14 @@ func TestCreateTableFromType(t *testing.T) {
 		t.FailNow()
 	}
 
-	testType := struct {
-		Id         int    `sql:"id,primarykey"`
-		FirstName  string `sql:"first_name"`
-		MiddleName string `sql:"middle_name"`
-		LastName   string `sql:"last_name,unique"`
-	}{}
-
 	db, err := sql.Open("postgres", config.DbUrl)
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
 	}
 
-	err = CreateTableFromType(db, "test_table", &testType)
+	var dataType testType
+	err = CreateTableFromType(db, "test_table", &dataType)
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
@@ -54,12 +53,8 @@ func TestCreateTableFromType(t *testing.T) {
 	}
 	sort.Strings(tableColumns)
 
-	sqlTags := parseSqlTagValues(testType)
-	var typeColumns []string
-	for _, tag := range sqlTags {
-		tokens := strings.Split(tag, ",")
-		typeColumns = append(typeColumns, tokens[0])
-	}
+	structSqlTags := parseStructSqlTags(dataType)
+	typeColumns := structSqlTags.columnNames
 	sort.Strings(typeColumns)
 
 	if !reflect.DeepEqual(tableColumns, typeColumns) {
@@ -72,7 +67,11 @@ func TestCreateTableFromType(t *testing.T) {
 }
 
 func TestDropTable(t *testing.T) {
-	var config TestUtilConfig
+	type testConfig struct {
+		DbUrl string `env:"TEST_DB_URL"`
+	}
+
+	var config testConfig
 	err := configurator.SetEnvFromFile("util_test.env")
 	if err != nil {
 		log.Println(err)

@@ -36,7 +36,9 @@ func whereConditionString(v interface{}) string {
 	// assume v is a pointer to a struct
 	// caller must first use checkKindPtrToStruct
 
-	fieldNames, fieldValues := fieldStringValueMap(v)
+	structFields := parseStructFields(v)
+	fieldNames := structFields.fieldNames
+	fieldValues := structFields.fieldStringValueMap
 
 	var conditionValues []string
 	for _, fieldName := range fieldNames {
