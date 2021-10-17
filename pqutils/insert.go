@@ -12,11 +12,17 @@ func InsertOne(db *sql.DB, table string, v interface{}) error {
 		return err
 	}
 
-	structSqlTags := parseStructSqlTags(v)
-	structFields := parseStructFields(v)
+	structSqlTags := parseStructSqlTags(&v)
+	structFields := parseStructFields(&v)
 
+	var stmtColumns = structSqlTags.columnNames
 	var stmtValues []string
-	for _, columnName := range structSqlTags.columnNames {
+	for i, columnName := range structSqlTags.columnNames {
+		if structSqlTags.columnKeyTypeMap[columnName] == "primarykey:serial" {
+			// we need to eliminate any values that are primarykey:serial
+			stmtColumns = append(stmtColumns[:i], stmtColumns[i+1:]...)
+			continue
+		}
 		fieldName := structSqlTags.columnFieldMap[columnName]
 		stmtValues = append(stmtValues, "'"+structFields.fieldStringValueMap[fieldName]+"'")
 	}

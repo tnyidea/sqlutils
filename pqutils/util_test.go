@@ -15,7 +15,7 @@ func TestCreateTableFromType(t *testing.T) {
 		DbUrl string `env:"TEST_DB_URL"`
 	}
 	type testType struct {
-		Id         int    `sql:"id,primarykey"`
+		Id         int    `sql:"id,primarykey,serial"`
 		FirstName  string `sql:"first_name"`
 		MiddleName string `sql:"middle_name"`
 		LastName   string `sql:"last_name,unique"`
@@ -72,7 +72,7 @@ func TestDropTable(t *testing.T) {
 	}
 
 	var config testConfig
-	err := configurator.SetEnvFromFile("util_test.env")
+	err := configurator.SetEnvFromFile("test.env")
 	if err != nil {
 		log.Println(err)
 		t.FailNow()

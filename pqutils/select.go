@@ -3,6 +3,7 @@ package pqutils
 import (
 	"context"
 	"database/sql"
+	"log"
 	"reflect"
 	"strings"
 )
@@ -33,7 +34,7 @@ func SelectOne(result interface{}, db *sql.DB, table string, where interface{}) 
 	}()
 
 	row := conn.QueryRowContext(ctx, query)
-	err = unmarshalRow(row, result)
+	err = unmarshalRowResult(row, result)
 	if err != nil {
 		return err
 	}
@@ -41,25 +42,25 @@ func SelectOne(result interface{}, db *sql.DB, table string, where interface{}) 
 	return nil
 }
 
-func SelectAllWithOptions(result *[]interface{}, db *sql.DB, table string,
+func SelectAllWithOptions(result interface{}, db *sql.DB, table string,
 	where interface{}, options QueryOptions) error {
 
-	err := checkKindSlicePtr(result)
-	if err != nil {
-		return err
-	}
-	err = checkKindStruct(where)
+	//err := checkKindSlicePtr(result)
+	//if err != nil {
+	//	return err
+	//}
+	err := checkKindStruct(where)
 	if err != nil {
 		return err
 	}
 
-	// TODO we should check if this works
-	//   hmmm nope.. we will probably pass in a nil slice
-	structSqlTags := parseStructSqlTags(reflect.ValueOf(result).Elem())
+	structSqlTags := parseStructSqlTags(&where)
 	query := `SELECT ` + strings.Join(structSqlTags.columnNames, ", ") + `
 		FROM ` + table +
 		whereConditionString(where) +
 		options.String()
+
+	log.Println(query)
 
 	// Execute the Query
 	ctx := context.Background()
@@ -79,14 +80,19 @@ func SelectAllWithOptions(result *[]interface{}, db *sql.DB, table string,
 		_ = rows.Close()
 	}()
 
-	err = unmarshalRows(rows, result)
-	if err != nil {
-		return err
+	/// TODO: HMMMM!!!!!
+	for rows.Next() {
+		newRowType := reflect.New(reflect.TypeOf(where)).Pointer()
+		err = unmarshalRowsResult(rows, newRowType)
+		log.Println(newRowType)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func SelectAll(result *[]interface{}, db *sql.DB, table string) error {
+func SelectAll(result interface{}, db *sql.DB, table string) error {
 	return SelectAllWithOptions(result, db, table, struct{}{}, QueryOptions{})
 }

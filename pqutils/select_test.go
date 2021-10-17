@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestInsertOne(t *testing.T) {
+func TestSelectAll(t *testing.T) {
 	type testConfig struct {
 		DbUrl string `env:"TEST_DB_URL"`
 	}
@@ -36,23 +36,13 @@ func TestInsertOne(t *testing.T) {
 		t.FailNow()
 	}
 
-	_ = DropTable(db, "test_table")
-
-	var dataType testType
-	err = CreateTableFromType(db, "test_table", &dataType)
+	var results []testType
+	err = SelectAllWithOptions(results, db, "test_table", testType{}, QueryOptions{})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
 	}
 
-	dataType = testType{
-		FirstName:  "John",
-		MiddleName: "H",
-		LastName:   "Smith",
-	}
-	err = InsertOne(db, "test_table", dataType)
-	if err != nil {
-		log.Println(err)
-		t.FailNow()
-	}
+	log.Println("RESULTS ARE:", results)
+
 }

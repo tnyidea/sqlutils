@@ -20,13 +20,12 @@ type structMetadata struct {
 
 func parseStructSqlTags(v interface{}) structMetadata {
 	// assume v is a pointer to a struct
-	// caller must first use checkKindPtrToStruct
 
 	var sm structMetadata
 
-	rt := reflect.TypeOf(v)
-	for i := 0; i < rt.NumField(); i++ {
-		field := rt.Field(i)
+	rve := reflect.Indirect(reflect.ValueOf(v)).Elem()
+	for i := 0; i < rve.NumField(); i++ {
+		field := rve.Type().Field(i)
 		if tagValue, ok := field.Tag.Lookup("sql"); ok && tagValue != "" {
 			fieldName := field.Name
 			tokens := strings.Split(tagValue, ",")
@@ -66,11 +65,10 @@ func parseStructSqlTags(v interface{}) structMetadata {
 
 func parseStructFields(v interface{}) structMetadata {
 	// assume v is a pointer to a struct
-	// caller must first use checkKindPtrToStruct
 
 	var sm structMetadata
 
-	rve := reflect.ValueOf(v).Elem()
+	rve := reflect.Indirect(reflect.ValueOf(v)).Elem()
 	for i := 0; i < rve.NumField(); i++ {
 		field := rve.Type().Field(i)
 		fieldName := field.Name
@@ -86,9 +84,33 @@ func parseStructFields(v interface{}) structMetadata {
 	return sm
 }
 
+func parseNonZeroStructFields(v interface{}) structMetadata {
+	// assume v is a pointer to a struct
+
+	var sm structMetadata
+
+	rve := reflect.Indirect(reflect.ValueOf(v)).Elem()
+	for i := 0; i < rve.NumField(); i++ {
+		field := rve.Field(i)
+		if field.IsZero() {
+			continue
+		}
+		fieldName := field.Type().Name()
+
+		if sm.fieldStringValueMap == nil {
+			sm.fieldStringValueMap = make(map[string]string)
+		}
+
+		sm.fieldNames = append(sm.fieldNames, fieldName)
+		sm.fieldStringValueMap[fieldName] = fmt.Sprintf("%v", field)
+	}
+
+	return sm
+
+}
+
 func scanDestination(v interface{}) []interface{} {
 	// assume v is a pointer to a struct
-	// caller must first use checkKindStructPtr
 
 	structFields := parseStructFields(v)
 	rve := reflect.ValueOf(v).Elem()
@@ -106,7 +128,7 @@ func scanDestination(v interface{}) []interface{} {
 	return sd
 }
 
-func unmarshalRow(row *sql.Row, v interface{}) error {
+func unmarshalRowResult(row *sql.Row, v interface{}) error {
 	// assume v is a pointer to a struct
 	// caller must first use checkKindPtrToStruct
 
@@ -125,22 +147,20 @@ func unmarshalRow(row *sql.Row, v interface{}) error {
 	return nil
 }
 
-func unmarshalRows(rows *sql.Rows, v *[]interface{}) error {
-	// assume v is a pointer to a slice of struct
-	// caller must first use checkKindPtrToSliceOfStruct
+func unmarshalRowsResult(rows *sql.Rows, v interface{}) error {
+	// assume v is a pointer to a struct
 
-	result := *v
-	for rows.Next() {
-		newRowType := reflect.New(reflect.TypeOf(reflect.Indirect(reflect.ValueOf(v)).Elem()))
-		sd := scanDestination(newRowType)
-		err := rows.Scan(sd...)
-		if err != nil {
-			return err
-		}
+	// Our assumption is that the order for the query
+	// matches the natural order of the struct fields
+	// and that each db column has a default value that
+	// matches Go's default type rules (so we don't need
+	// to use Go's Sql Null types)
 
-		result = append(result, newRowType)
+	sd := scanDestination(v)
+	err := rows.Scan(sd...)
+	if err != nil {
+		return err
 	}
 
-	v = &result
 	return nil
 }
