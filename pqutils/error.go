@@ -25,6 +25,8 @@ func (e *InvalidTypeError) Error() string {
 	return "invalid type: " + e.InvalidType.String()
 }
 
+func checkKindMapStrin
+
 func checkKindStruct(v interface{}) error {
 	rv := reflect.ValueOf(v)
 

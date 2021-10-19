@@ -80,7 +80,7 @@ func TestSelectOne(t *testing.T) {
 		t.FailNow()
 	}
 
-	result, err := SelectOne(db, "test_table", TestType{}, TestType{FirstName: "John"})
+	result, err := SelectOne(db, "test_table", TestType{}, map[string]string{"FirstName": "John"})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()

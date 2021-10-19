@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func SelectOne(db *sql.DB, table string, schemaType interface{}, where interface{}) (interface{}, error) {
+func SelectOne(db *sql.DB, table string, schemaType interface{}, where map[string]string) (interface{}, error) {
 	result, err := SelectAllWithOptions(db, table, schemaType, where, QueryOptions{Limit: 1})
 	if err != nil {
 		return nil, err
@@ -21,14 +21,21 @@ func SelectOne(db *sql.DB, table string, schemaType interface{}, where interface
 	return result[0], nil
 }
 
-func SelectAllWithOptions(db *sql.DB, table string,
-	schemaType interface{}, where interface{}, options QueryOptions) ([]interface{}, error) {
+func SelectAll(db *sql.DB, table string, schemaType interface{}) ([]interface{}, error) {
+	if !reflect.ValueOf(schemaType).IsZero() {
+		return nil, errors.New("invalid schemaType: must be a zero-value struct")
+	}
+	return SelectAllWithOptions(db, table, schemaType, nil, QueryOptions{})
+}
+
+func SelectAllWithOptions(db *sql.DB, table string, schemaType interface{},
+	where map[string]string, options QueryOptions) ([]interface{}, error) {
 
 	//err := checkKindSlicePtr(result)
 	//if err != nil {
 	//	return err
 	//}
-	err := checkKindStruct(where)
+	err := checkKind(where)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +43,7 @@ func SelectAllWithOptions(db *sql.DB, table string,
 	structSqlTags := parseStructSqlTags(&schemaType)
 	query := `SELECT ` + strings.Join(structSqlTags.columnNames, ", ") + `
 		FROM ` + table +
-		whereConditionString(where) +
+		whereConditionString(schemaType, where) +
 		options.String()
 
 	// Execute the Query
@@ -106,12 +113,4 @@ func SelectAllWithOptions(db *sql.DB, table string,
 	}
 
 	return result, nil
-}
-
-func SelectAll(db *sql.DB, table string, schemaType interface{}) ([]interface{}, error) {
-	// TODO should we instead just validate that schemaType is zero and error if not?
-	if !reflect.ValueOf(schemaType).IsZero() {
-		return nil, errors.New("invalid schemaType: must be a zero-value struct")
-	}
-	return SelectAllWithOptions(db, table, schemaType, struct{}{}, QueryOptions{})
 }
