@@ -36,13 +36,12 @@ func TestSelectAll(t *testing.T) {
 		t.FailNow()
 	}
 
-	var results []testType
-	err = SelectAllWithOptions(results, db, "test_table", testType{}, QueryOptions{})
+	result, err := SelectAllWithOptions(db, "test_table", testType{}, QueryOptions{})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
 	}
 
-	log.Println("RESULTS ARE:", results)
+	log.Println("RESULTS ARE:", result)
 
 }

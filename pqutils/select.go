@@ -3,6 +3,7 @@ package pqutils
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log"
 	"reflect"
 	"strings"
@@ -42,8 +43,8 @@ func SelectOne(result interface{}, db *sql.DB, table string, where interface{}) 
 	return nil
 }
 
-func SelectAllWithOptions(result interface{}, db *sql.DB, table string,
-	where interface{}, options QueryOptions) error {
+func SelectAllWithOptions(db *sql.DB, table string,
+	where interface{}, options QueryOptions) ([]interface{}, error) {
 
 	//err := checkKindSlicePtr(result)
 	//if err != nil {
@@ -51,7 +52,7 @@ func SelectAllWithOptions(result interface{}, db *sql.DB, table string,
 	//}
 	err := checkKindStruct(where)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	structSqlTags := parseStructSqlTags(&where)
@@ -66,7 +67,7 @@ func SelectAllWithOptions(result interface{}, db *sql.DB, table string,
 	ctx := context.Background()
 	conn, err := db.Conn(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() {
 		_ = conn.Close()
@@ -74,25 +75,52 @@ func SelectAllWithOptions(result interface{}, db *sql.DB, table string,
 
 	rows, err := conn.QueryContext(ctx, query)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() {
 		_ = rows.Close()
 	}()
 
-	/// TODO: HMMMM!!!!!
-	for rows.Next() {
-		newRowType := reflect.New(reflect.TypeOf(where)).Pointer()
-		err = unmarshalRowsResult(rows, newRowType)
-		log.Println(newRowType)
-		if err != nil {
-			return err
-		}
+	log.Println(rows.Columns())
+
+
+	// Index column types
+	columnTypeMap := make(map[string]string)
+	columnTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, err
+	}
+	for _, columnType := range columnTypes {
+		columnTypeMap[columnType.Name()] = columnType.
 	}
 
-	return nil
+	log.Println(rows.ColumnTypes())
+	return nil, nil
+/*
+	var result []interface{}
+	for rows.Next() {
+		rowResult := reflect.New(reflect.TypeOf(where))
+
+		columnNames, err := rows.Columns()
+		if err != nil {
+			return nil, err
+		}
+		for columnName := range columnNames {
+
+
+		}
+
+	}
+
+	return result, nil
+
+ */
 }
 
-func SelectAll(result interface{}, db *sql.DB, table string) error {
-	return SelectAllWithOptions(result, db, table, struct{}{}, QueryOptions{})
+func SelectAll(db *sql.DB, table string, schemaType interface{}) ([]interface{}, error) {
+	// TODO should we instead just validate that schemaType is zero and error if not?
+	if !reflect.ValueOf(schemaType).IsZero() {
+		return nil, errors.New("invalid schemaType: must be a zero-value struct")
+	}
+	return SelectAllWithOptions(db, table, schemaType, QueryOptions{})
 }
