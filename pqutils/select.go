@@ -4,47 +4,25 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
 	"reflect"
 	"strings"
 )
 
-func SelectOne(result interface{}, db *sql.DB, table string, where interface{}) error {
-	err := checkKindStructPtr(result)
+func SelectOne(db *sql.DB, table string, schemaType interface{}, where interface{}) (interface{}, error) {
+	result, err := SelectAllWithOptions(db, table, schemaType, where, QueryOptions{Limit: 1})
 	if err != nil {
-		return err
-	}
-	err = checkKindStructPtr(where)
-	if err != nil {
-		return err
+		return nil, err
 	}
 
-	structSqlTags := parseStructSqlTags(where)
-	query := `SELECT ` + strings.Join(structSqlTags.columnNames, ", ") +
-		`FROM ` + table +
-		whereConditionString(where)
-
-	// Execute the Query
-	ctx := context.Background()
-	conn, err := db.Conn(ctx)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = conn.Close()
-	}()
-
-	row := conn.QueryRowContext(ctx, query)
-	err = unmarshalRowResult(row, result)
-	if err != nil {
-		return err
+	if len(result) != 1 {
+		return reflect.New(reflect.ValueOf(schemaType).Type()).Elem().Interface(), nil
 	}
 
-	return nil
+	return result[0], nil
 }
 
 func SelectAllWithOptions(db *sql.DB, table string,
-	where interface{}, options QueryOptions) ([]interface{}, error) {
+	schemaType interface{}, where interface{}, options QueryOptions) ([]interface{}, error) {
 
 	//err := checkKindSlicePtr(result)
 	//if err != nil {
@@ -55,13 +33,11 @@ func SelectAllWithOptions(db *sql.DB, table string,
 		return nil, err
 	}
 
-	structSqlTags := parseStructSqlTags(&where)
+	structSqlTags := parseStructSqlTags(&schemaType)
 	query := `SELECT ` + strings.Join(structSqlTags.columnNames, ", ") + `
 		FROM ` + table +
 		whereConditionString(where) +
 		options.String()
-
-	log.Println(query)
 
 	// Execute the Query
 	ctx := context.Background()
@@ -81,40 +57,55 @@ func SelectAllWithOptions(db *sql.DB, table string,
 		_ = rows.Close()
 	}()
 
-	log.Println(rows.Columns())
-
-
-	// Index column types
-	columnTypeMap := make(map[string]string)
+	// Gather column and struct information
+	sm := parseStructSqlTags(&schemaType)
 	columnTypes, err := rows.ColumnTypes()
 	if err != nil {
 		return nil, err
 	}
-	for _, columnType := range columnTypes {
-		columnTypeMap[columnType.Name()] = columnType.
-	}
 
-	log.Println(rows.ColumnTypes())
-	return nil, nil
-/*
+	// Collect the results
 	var result []interface{}
 	for rows.Next() {
-		rowResult := reflect.New(reflect.TypeOf(where))
-
-		columnNames, err := rows.Columns()
+		// Scan the row result
+		// TODO KEEP THIS HERE -- maybe we don't need to reuse this as we build
+		//var sd []interface{}
+		//for range columnTypes {
+		//	// TODO add code for the array test case when we get an array back from postgres
+		//	// sd = append(sd, pq.Array(field.Addr().Interface()))
+		//	var v interface{}
+		//	sd = append(sd, &v)
+		//}
+		//err := rows.Scan(sd...)
+		//if err != nil {
+		//    return nil, err
+		//}
+		//
+		//rowResult := reflect.New(reflect.ValueOf(schemaType).Type())
+		//log.Println(rowResult.Elem())
+		//for i, columnType := range columnTypes {
+		//    columnName := columnType.Name()
+		//	log.Println(columnName)
+		//    columnTypeName := columnType.DatabaseTypeName()
+		//    switch columnTypeName {
+		//    case "INT4":
+		//        log.Println(*sd[i].(*interface{}))
+		//		rowResult.Elem().FieldByName(columnFieldMap[columnName]).SetInt((*sd[i].(*interface{})).(int64))
+		//    case "VARCHAR":
+		//		log.Println(*sd[i].(*interface{}))
+		//		rowResult.Elem().FieldByName(columnFieldMap[columnName]).SetString((*sd[i].(*interface{})).(string))
+		//    default:
+		//        return nil, errors.New("scan error: unhandled type: " + columnTypeName)
+		//    }
+		//}
+		rowResult, err := unmarshalRowsResult(rows, columnTypes, schemaType, sm)
 		if err != nil {
 			return nil, err
 		}
-		for columnName := range columnNames {
-
-
-		}
-
+		result = append(result, rowResult)
 	}
 
 	return result, nil
-
- */
 }
 
 func SelectAll(db *sql.DB, table string, schemaType interface{}) ([]interface{}, error) {
@@ -122,5 +113,5 @@ func SelectAll(db *sql.DB, table string, schemaType interface{}) ([]interface{},
 	if !reflect.ValueOf(schemaType).IsZero() {
 		return nil, errors.New("invalid schemaType: must be a zero-value struct")
 	}
-	return SelectAllWithOptions(db, table, schemaType, QueryOptions{})
+	return SelectAllWithOptions(db, table, schemaType, struct{}{}, QueryOptions{})
 }

@@ -2,8 +2,8 @@ package pqutils
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
-	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 	"reflect"
 	"strings"
@@ -85,6 +85,7 @@ func parseStructFields(v interface{}) structMetadata {
 }
 
 func parseNonZeroStructFields(v interface{}) structMetadata {
+	// TODO... handle the case where a zero value is a legit value
 	// assume v is a pointer to a struct
 
 	var sm structMetadata
@@ -95,7 +96,7 @@ func parseNonZeroStructFields(v interface{}) structMetadata {
 		if field.IsZero() {
 			continue
 		}
-		fieldName := field.Type().Name()
+		fieldName := rve.Type().Field(i).Name
 
 		if sm.fieldStringValueMap == nil {
 			sm.fieldStringValueMap = make(map[string]string)
@@ -109,58 +110,33 @@ func parseNonZeroStructFields(v interface{}) structMetadata {
 
 }
 
-func scanDestination(v interface{}) []interface{} {
+func unmarshalRowsResult(rows *sql.Rows, columnTypes []*sql.ColumnType, schemaType interface{}, sm structMetadata) (interface{}, error) {
 	// assume v is a pointer to a struct
-
-	structFields := parseStructFields(v)
-	rve := reflect.ValueOf(v).Elem()
 
 	var sd []interface{}
-	for _, fieldName := range structFields.fieldNames {
-		field := rve.FieldByName(fieldName)
-		if field.Kind() == reflect.Slice {
-			sd = append(sd, pq.Array(field.Addr().Interface()))
-		} else {
-			sd = append(sd, field.Addr().Interface())
-		}
+	for range columnTypes {
+		// TODO add code for the array test case when we get an array back from postgres
+		// sd = append(sd, pq.Array(field.Addr().Interface()))
+		var v interface{}
+		sd = append(sd, &v)
 	}
-
-	return sd
-}
-
-func unmarshalRowResult(row *sql.Row, v interface{}) error {
-	// assume v is a pointer to a struct
-	// caller must first use checkKindPtrToStruct
-
-	// Our assumption is that the order for the query
-	// matches the natural order of the struct fields
-	// and that each db column has a default value that
-	// matches Go's default type rules (so we don't need
-	// to use Go's Sql Null types)
-
-	sd := scanDestination(v)
-	err := row.Scan(sd...)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func unmarshalRowsResult(rows *sql.Rows, v interface{}) error {
-	// assume v is a pointer to a struct
-
-	// Our assumption is that the order for the query
-	// matches the natural order of the struct fields
-	// and that each db column has a default value that
-	// matches Go's default type rules (so we don't need
-	// to use Go's Sql Null types)
-
-	sd := scanDestination(v)
 	err := rows.Scan(sd...)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	rowResult := reflect.New(reflect.ValueOf(schemaType).Type())
+	for i, columnType := range columnTypes {
+		columnName := columnType.Name()
+		columnTypeName := columnType.DatabaseTypeName()
+		switch columnTypeName {
+		case "INT4":
+			rowResult.Elem().FieldByName(sm.columnFieldMap[columnName]).SetInt((*sd[i].(*interface{})).(int64))
+		case "VARCHAR":
+			rowResult.Elem().FieldByName(sm.columnFieldMap[columnName]).SetString((*sd[i].(*interface{})).(string))
+		default:
+			return nil, errors.New("scan error: unhandled type: " + columnTypeName)
+		}
+	}
+	return rowResult.Elem().Interface(), nil
 }

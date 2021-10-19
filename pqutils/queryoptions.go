@@ -33,9 +33,10 @@ func (p *QueryOptions) String() string {
 // Helpers
 
 func whereConditionString(v interface{}) string {
+	// TODO maybe this should be a map[FieldName]interface{}??
 	// assume v is a pointer to a struct
-	// caller must first use checkKindPtrToStruct
 
+	sm := parseStructSqlTags(&v)
 	structFields := parseNonZeroStructFields(&v)
 	fieldNames := structFields.fieldNames
 	fieldValues := structFields.fieldStringValueMap
@@ -44,7 +45,7 @@ func whereConditionString(v interface{}) string {
 	for _, fieldName := range fieldNames {
 		fieldValue := fieldValues[fieldName]
 		if fieldValue != "" {
-			conditionValues = append(conditionValues, fieldName+"='"+fieldValue+"'")
+			conditionValues = append(conditionValues, sm.fieldColumnMap[fieldName]+"='"+fieldValue+"'")
 		}
 	}
 
