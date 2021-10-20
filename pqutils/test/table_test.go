@@ -1,9 +1,9 @@
-package pqutils
+package test
 
 import (
 	"context"
 	"database/sql"
-	"github.com/gbnyc26/configurator"
+	"github.com/gbnyc26/sqlutils/pqutils"
 	"log"
 	"reflect"
 	"sort"
@@ -11,23 +11,7 @@ import (
 )
 
 func TestCreateTableFromType(t *testing.T) {
-	type testConfig struct {
-		DbUrl string `env:"TEST_DB_URL"`
-	}
-	type testType struct {
-		Id         int    `sql:"id,primarykey,serial"`
-		FirstName  string `sql:"first_name"`
-		MiddleName string `sql:"middle_name"`
-		LastName   string `sql:"last_name,unique"`
-	}
-
-	var config testConfig
-	err := configurator.SetEnvFromFile("test.env")
-	if err != nil {
-		log.Println(err)
-		t.FailNow()
-	}
-	err = configurator.ParseEnvConfig(&config)
+	config, err := configureTest()
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
@@ -39,45 +23,33 @@ func TestCreateTableFromType(t *testing.T) {
 		t.FailNow()
 	}
 
-	var dataType testType
-	err = CreateTableFromType(db, "test_table", &dataType)
+	err = pqutils.CreateTableFromType(db, "test_table", testType{})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
 	}
 
-	tableColumns, err := testGetTableColumns(db, "test_table")
+	tableColumnNames, err := testGetTableColumns(db, "test_table")
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
 	}
-	sort.Strings(tableColumns)
+	sort.Strings(tableColumnNames)
 
-	structSqlTags := parseStructSqlTags(dataType)
-	typeColumns := structSqlTags.columnNames
-	sort.Strings(typeColumns)
+	typeColumnNames := pqutils.GetSchemaTypeColumnNames(testType{})
+	sort.Strings(typeColumnNames)
 
-	if !reflect.DeepEqual(tableColumns, typeColumns) {
+	if !reflect.DeepEqual(tableColumnNames, typeColumnNames) {
 		log.Println("error: created table columns do not match type columns")
-		log.Println("tableColumns: ", tableColumns)
-		log.Println("typeColumns", typeColumns)
+		log.Println("tableColumns: ", tableColumnNames)
+		log.Println("typeColumns", typeColumnNames)
 		t.FailNow()
 	}
 
 }
 
 func TestDropTable(t *testing.T) {
-	type testConfig struct {
-		DbUrl string `env:"TEST_DB_URL"`
-	}
-
-	var config testConfig
-	err := configurator.SetEnvFromFile("test.env")
-	if err != nil {
-		log.Println(err)
-		t.FailNow()
-	}
-	err = configurator.ParseEnvConfig(&config)
+	config, err := configureTest()
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
@@ -89,7 +61,7 @@ func TestDropTable(t *testing.T) {
 		t.FailNow()
 	}
 
-	err = DropTable(db, "test_table")
+	err = pqutils.DropTable(db, "test_table")
 	if err != nil {
 		log.Println(err)
 		t.FailNow()

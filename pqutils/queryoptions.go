@@ -33,15 +33,16 @@ func (p *QueryOptions) String() string {
 // Helpers
 
 func whereConditionString(schemaType interface{}, where map[string]string) string {
-	// TODO maybe this should be a map[FieldName]interface{}??
-	// assume v is a pointer to a struct
+	if where == nil {
+		return ""
+	}
 
-	sm := parseStructSqlTags(&schemaType)
+	sm := parseSchemaTypeValue(&schemaType)
 
 	var conditionValues []string
 	for fieldName, fieldValue := range where {
 		if fieldValue != "" {
-			conditionValues = append(conditionValues, sm.fieldColumnMap[fieldName]+"='"+fieldValue+"'")
+			conditionValues = append(conditionValues, sm.fieldNameColumnNameMap[fieldName]+"='"+fieldValue+"'")
 		}
 	}
 

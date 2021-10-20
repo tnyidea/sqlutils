@@ -10,16 +10,25 @@ import (
 )
 
 type structMetadata struct {
-	fieldNames          []string
-	fieldStringValueMap map[string]string
-	fieldColumnMap      map[string]string
-	columnNames         []string
-	columnFieldMap      map[string]string
-	columnKeyTypeMap    map[string]string
+	fieldNames              []string
+	fieldNameValueMap       map[string]interface{}
+	fieldNameStringValueMap map[string]string
+	fieldNameColumnNameMap  map[string]string
+	columnNames             []string
+	columnNameFieldNameMap  map[string]string
+	columnNameFieldKindMap  map[string]reflect.Kind
+	columnKeyTypeMap        map[string]string
 }
 
-func parseStructSqlTags(v interface{}) structMetadata {
-	// assume v is a pointer to a struct
+func GetSchemaTypeColumnNames(structType interface{}) []string {
+	// Assume v is a pointer to a struct
+
+	sm := parseSchemaTypeValue(&structType)
+	return sm.columnNames
+}
+
+func parseSchemaTypeValue(v interface{}) structMetadata {
+	// Assume v is a pointer to a struct
 
 	var sm structMetadata
 
@@ -31,17 +40,29 @@ func parseStructSqlTags(v interface{}) structMetadata {
 			tokens := strings.Split(tagValue, ",")
 			columnName := tokens[0]
 
-			if sm.fieldColumnMap == nil {
-				sm.fieldColumnMap = make(map[string]string)
+			if sm.fieldNameColumnNameMap == nil {
+				sm.fieldNameColumnNameMap = make(map[string]string)
 			}
-			if sm.columnFieldMap == nil {
-				sm.columnFieldMap = make(map[string]string)
+			if sm.fieldNameValueMap == nil {
+				sm.fieldNameValueMap = make(map[string]interface{})
+			}
+			if sm.fieldNameStringValueMap == nil {
+				sm.fieldNameStringValueMap = make(map[string]string)
+			}
+			if sm.columnNameFieldNameMap == nil {
+				sm.columnNameFieldNameMap = make(map[string]string)
+			}
+			if sm.columnNameFieldKindMap == nil {
+				sm.columnNameFieldKindMap = make(map[string]reflect.Kind)
 			}
 
 			sm.fieldNames = append(sm.fieldNames, fieldName)
+			sm.fieldNameValueMap[fieldName] = rve.Field(i).Interface()
+			sm.fieldNameStringValueMap[fieldName] = fmt.Sprintf("%v", rve.Field(i))
+			sm.fieldNameColumnNameMap[fieldName] = columnName
 			sm.columnNames = append(sm.columnNames, columnName)
-			sm.fieldColumnMap[fieldName] = columnName
-			sm.columnFieldMap[columnName] = fieldName
+			sm.columnNameFieldNameMap[columnName] = fieldName
+			sm.columnNameFieldKindMap[columnName] = field.Type.Kind()
 
 			if len(tokens) > 1 {
 				if sm.columnKeyTypeMap == nil {
@@ -63,55 +84,8 @@ func parseStructSqlTags(v interface{}) structMetadata {
 	return sm
 }
 
-func parseStructFields(v interface{}) structMetadata {
-	// assume v is a pointer to a struct
-
-	var sm structMetadata
-
-	rve := reflect.Indirect(reflect.ValueOf(v)).Elem()
-	for i := 0; i < rve.NumField(); i++ {
-		field := rve.Type().Field(i)
-		fieldName := field.Name
-
-		if sm.fieldStringValueMap == nil {
-			sm.fieldStringValueMap = make(map[string]string)
-		}
-
-		sm.fieldNames = append(sm.fieldNames, fieldName)
-		sm.fieldStringValueMap[fieldName] = fmt.Sprintf("%v", rve.Field(i))
-	}
-
-	return sm
-}
-
-func parseNonZeroStructFields(v interface{}) structMetadata {
-	// TODO... handle the case where a zero value is a legit value
-	// assume v is a pointer to a struct
-
-	var sm structMetadata
-
-	rve := reflect.Indirect(reflect.ValueOf(v)).Elem()
-	for i := 0; i < rve.NumField(); i++ {
-		field := rve.Field(i)
-		if field.IsZero() {
-			continue
-		}
-		fieldName := rve.Type().Field(i).Name
-
-		if sm.fieldStringValueMap == nil {
-			sm.fieldStringValueMap = make(map[string]string)
-		}
-
-		sm.fieldNames = append(sm.fieldNames, fieldName)
-		sm.fieldStringValueMap[fieldName] = fmt.Sprintf("%v", field)
-	}
-
-	return sm
-
-}
-
 func unmarshalRowsResult(rows *sql.Rows, columnTypes []*sql.ColumnType, schemaType interface{}, sm structMetadata) (interface{}, error) {
-	// assume v is a pointer to a struct
+	// assume schemaType is a struct
 
 	var sd []interface{}
 	for range columnTypes {
@@ -131,9 +105,9 @@ func unmarshalRowsResult(rows *sql.Rows, columnTypes []*sql.ColumnType, schemaTy
 		columnTypeName := columnType.DatabaseTypeName()
 		switch columnTypeName {
 		case "INT4":
-			rowResult.Elem().FieldByName(sm.columnFieldMap[columnName]).SetInt((*sd[i].(*interface{})).(int64))
+			rowResult.Elem().FieldByName(sm.columnNameFieldNameMap[columnName]).SetInt((*sd[i].(*interface{})).(int64))
 		case "VARCHAR":
-			rowResult.Elem().FieldByName(sm.columnFieldMap[columnName]).SetString((*sd[i].(*interface{})).(string))
+			rowResult.Elem().FieldByName(sm.columnNameFieldNameMap[columnName]).SetString((*sd[i].(*interface{})).(string))
 		default:
 			return nil, errors.New("scan error: unhandled type: " + columnTypeName)
 		}

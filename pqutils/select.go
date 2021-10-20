@@ -31,17 +31,8 @@ func SelectAll(db *sql.DB, table string, schemaType interface{}) ([]interface{},
 func SelectAllWithOptions(db *sql.DB, table string, schemaType interface{},
 	where map[string]string, options QueryOptions) ([]interface{}, error) {
 
-	//err := checkKindSlicePtr(result)
-	//if err != nil {
-	//	return err
-	//}
-	err := checkKind(where)
-	if err != nil {
-		return nil, err
-	}
-
-	structSqlTags := parseStructSqlTags(&schemaType)
-	query := `SELECT ` + strings.Join(structSqlTags.columnNames, ", ") + `
+	sm := parseSchemaTypeValue(&schemaType)
+	query := `SELECT ` + strings.Join(sm.columnNames, ", ") + `
 		FROM ` + table +
 		whereConditionString(schemaType, where) +
 		options.String()
@@ -65,7 +56,7 @@ func SelectAllWithOptions(db *sql.DB, table string, schemaType interface{},
 	}()
 
 	// Gather column and struct information
-	sm := parseStructSqlTags(&schemaType)
+	sm = parseSchemaTypeValue(&schemaType)
 	columnTypes, err := rows.ColumnTypes()
 	if err != nil {
 		return nil, err

@@ -8,8 +8,12 @@ type InvalidTypeError struct {
 }
 
 func (e *InvalidTypeError) Error() string {
+	if e.RequiredType == "Map" {
+		return "invalid type: must be a map: " + e.InvalidType.String()
+	}
+
 	if e.RequiredType == "Struct" {
-		return "invalid type: must be a non-pointer struct type: +" + e.InvalidType.String()
+		return "invalid type: must be a non-pointer struct type: " + e.InvalidType.String()
 	}
 
 	if e.RequiredType == "StructPtr" &&
@@ -25,7 +29,15 @@ func (e *InvalidTypeError) Error() string {
 	return "invalid type: " + e.InvalidType.String()
 }
 
-func checkKindMapStrin
+func checkKindMap(v interface{}) error {
+	rv := reflect.ValueOf(v)
+
+	if rv.Kind() != reflect.Map {
+		return &InvalidTypeError{"Map", reflect.TypeOf(v)}
+	}
+
+	return nil
+}
 
 func checkKindStruct(v interface{}) error {
 	rv := reflect.ValueOf(v)

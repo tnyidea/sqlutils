@@ -1,24 +1,12 @@
-package pqutils
+package test
 
 import (
 	"database/sql"
-	"encoding/json"
 	"github.com/gbnyc26/configurator"
+	"github.com/gbnyc26/sqlutils/pqutils"
 	"log"
 	"testing"
 )
-
-type TestType struct {
-	Id         int    `json:"id" sql:"id,primarykey,serial"`
-	FirstName  string `json:"firstName" sql:"first_name"`
-	MiddleName string `json:"middleName" sql:"middle_name"`
-	LastName   string `json:"lastName" sql:"last_name,unique"`
-}
-
-func (p *TestType) String() string {
-	b, _ := json.MarshalIndent(p, "", "    ")
-	return string(b)
-}
 
 func TestSelectAll(t *testing.T) {
 	type testConfig struct {
@@ -43,7 +31,7 @@ func TestSelectAll(t *testing.T) {
 		t.FailNow()
 	}
 
-	result, err := SelectAll(db, "test_table", TestType{})
+	result, err := pqutils.SelectAll(db, "test_table", testType{})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
@@ -51,7 +39,7 @@ func TestSelectAll(t *testing.T) {
 
 	log.Println(result)
 	for _, v := range result {
-		w := v.(TestType)
+		w := v.(testType)
 		log.Println(&w)
 	}
 
@@ -80,13 +68,13 @@ func TestSelectOne(t *testing.T) {
 		t.FailNow()
 	}
 
-	result, err := SelectOne(db, "test_table", TestType{}, map[string]string{"FirstName": "John"})
+	result, err := pqutils.SelectOne(db, "test_table", testType{}, map[string]string{"LastName": "Smith"})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
 	}
 
 	log.Println(result)
-	w := result.(TestType)
+	w := result.(testType)
 	log.Println(&w)
 }
