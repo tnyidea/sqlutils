@@ -42,13 +42,13 @@ func UpdateOne(db *sql.DB, table string, v interface{}) error {
 
 }
 
-func UpdateAllWithOptions(db *sql.DB, table string, v interface{}, fieldMask []string, where map[string]string) error {
+func UpdateAllWithOptions(db *sql.DB, table string, v interface{}, mask []string, where map[string]string) error {
 	// TODO need to come up with a mask or something to decide which values actually get updated
 	//   OR does schemaType need to be a struct of pointers?
-	return updateAllWithOptions(db, table, v, fieldMask, where)
+	return updateAllWithOptions(db, table, v, mask, where)
 }
 
-func updateAllWithOptions(db *sql.DB, table string, v interface{}, fieldMask []string, where map[string]string) error {
+func updateAllWithOptions(db *sql.DB, table string, v interface{}, mask []string, where map[string]string) error {
 	if where == nil {
 		return errors.New("invalid where condition: where must be non-nil")
 	}
@@ -63,7 +63,7 @@ func updateAllWithOptions(db *sql.DB, table string, v interface{}, fieldMask []s
 	// TODO... consider making this a standard parameterized exec
 	stmtColumns := sm.columnNames
 
-	// TODO Implement fieldMask
+	// TODO Implement valueMask
 	var stmtValues []string
 	for _, columnName := range stmtColumns {
 		fieldName := sm.columnNameFieldNameMap[columnName]
