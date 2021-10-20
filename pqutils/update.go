@@ -38,17 +38,17 @@ func UpdateOne(db *sql.DB, table string, v interface{}) error {
 		return errors.New("invalid record for update: cannot find unique value for primary key values of v")
 	}
 
-	return updateAllWithOptions(db, table, v, where)
+	return updateAllWithOptions(db, table, v, nil, where)
 
 }
 
-func UpdateAllWithOptions(db *sql.DB, table string, v interface{}, where map[string]string) error {
+func UpdateAllWithOptions(db *sql.DB, table string, v interface{}, fieldMask []string, where map[string]string) error {
 	// TODO need to come up with a mask or something to decide which values actually get updated
 	//   OR does schemaType need to be a struct of pointers?
-	return updateAllWithOptions(db, table, v, where)
+	return updateAllWithOptions(db, table, v, fieldMask, where)
 }
 
-func updateAllWithOptions(db *sql.DB, table string, v interface{}, where map[string]string) error {
+func updateAllWithOptions(db *sql.DB, table string, v interface{}, fieldMask []string, where map[string]string) error {
 	if where == nil {
 		return errors.New("invalid where condition: where must be non-nil")
 	}
@@ -62,6 +62,8 @@ func updateAllWithOptions(db *sql.DB, table string, v interface{}, where map[str
 
 	// TODO... consider making this a standard parameterized exec
 	stmtColumns := sm.columnNames
+
+	// TODO Implement fieldMask
 	var stmtValues []string
 	for _, columnName := range stmtColumns {
 		fieldName := sm.columnNameFieldNameMap[columnName]
