@@ -30,11 +30,11 @@ func DeleteOne(db *sql.DB, table string, v interface{}) error {
 	}
 
 	// Test for uniqueness, if valid should only have one record that matches
-	result, err := SelectAllWithOptions(db, table, v, where, QueryOptions{})
+	rows, err := SelectAllWithOptions(db, table, v, where, QueryOptions{})
 	if err != nil {
 		return err
 	}
-	if len(result) != 1 {
+	if !rows.Next() {
 		return errors.New("invalid record for delete: cannot find unique value for primary key values of v")
 	}
 

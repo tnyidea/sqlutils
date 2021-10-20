@@ -35,8 +35,9 @@ func SelectOne(db *sql.DB, table string, v interface{}) (interface{}, error) {
 	}
 
 	var result interface{}
-	if rows.Next() {
-		rowResult, err := unmarshalRowsResult(rows, v)
+	// TODO Reconsider this... we want to make sure that there is absolutely 1 record that matches
+	if !rows.Next() {
+		rowResult, err := UnmarshalRowsResult(rows, v)
 		if err != nil {
 			return nil, err
 		}

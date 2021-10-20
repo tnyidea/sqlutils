@@ -30,11 +30,12 @@ func UpdateOne(db *sql.DB, table string, v interface{}) error {
 	}
 
 	// Test for uniqueness, if valid should only have one record that matches
-	result, err := SelectAllWithOptions(db, table, v, where, QueryOptions{})
+	rows, err := SelectAllWithOptions(db, table, v, where, QueryOptions{})
 	if err != nil {
 		return err
 	}
-	if len(result) != 1 {
+	// TODO Reconsider this... we want to make sure that there is absolutely 1 record that matches
+	if !rows.Next() {
 		return errors.New("invalid record for update: cannot find unique value for primary key values of v")
 	}
 

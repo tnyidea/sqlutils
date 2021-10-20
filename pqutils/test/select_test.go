@@ -20,17 +20,23 @@ func TestSelectAll(t *testing.T) {
 		t.FailNow()
 	}
 
-	result, err := pqutils.SelectAll(db, "test_table", testType{})
+	rows, err := pqutils.SelectAll(db, "test_table", testType{})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
 	}
 
-	log.Println(result)
-	for _, v := range result {
-		w := v.(testType)
-		log.Println(&w)
+	// Collect the results
+	var result []testType
+	for rows.Next() {
+		rowResult, err := pqutils.UnmarshalRowsResult(rows, testType{})
+		if err != nil {
+			log.Println(err)
+			t.FailNow()
+		}
+		result = append(result, rowResult.(testType))
 	}
+	log.Println(result)
 
 }
 
@@ -71,15 +77,21 @@ func TestSelectAllWithOptions(t *testing.T) {
 		t.FailNow()
 	}
 
-	result, err := pqutils.SelectAllWithOptions(db, "test_table", testType{}, map[string]string{"LastName": "Smith"}, pqutils.QueryOptions{})
+	rows, err := pqutils.SelectAllWithOptions(db, "test_table", testType{}, map[string]string{"LastName": "Smith"}, pqutils.QueryOptions{})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
 	}
 
-	log.Println(result)
-	for _, v := range result {
-		w := v.(testType)
-		log.Println(&w)
+	// Collect the results
+	var result []testType
+	for rows.Next() {
+		rowResult, err := pqutils.UnmarshalRowsResult(rows, testType{})
+		if err != nil {
+			log.Println(err)
+			t.FailNow()
+		}
+		result = append(result, rowResult.(testType))
 	}
+	log.Println(result)
 }
