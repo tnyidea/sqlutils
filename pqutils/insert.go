@@ -158,7 +158,7 @@ func insertOne(conn *sql.Conn, ctx context.Context, table string, v interface{})
 		stmtValues = append(stmtValues, "'"+sm.fieldNameStringValueMap[fieldName]+"'")
 	}
 
-	stmt := `INSERT INTO ` + table +
+	stmt := `INSERT INTO ` + table + ` ` +
 		`(` + strings.Join(stmtColumns, ", ") + `) ` +
 		`VALUES (` + strings.Join(stmtValues, ", ") + `)`
 

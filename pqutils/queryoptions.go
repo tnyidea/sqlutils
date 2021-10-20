@@ -1,6 +1,7 @@
 package pqutils
 
 import (
+	"reflect"
 	"strconv"
 	"strings"
 )
@@ -42,7 +43,15 @@ func whereConditionString(schemaType interface{}, where map[string]string) strin
 	var conditionValues []string
 	for fieldName, fieldValue := range where {
 		if fieldValue != "" {
-			conditionValues = append(conditionValues, sm.fieldNameColumnNameMap[fieldName]+"='"+fieldValue+"'")
+			columnName := sm.fieldNameColumnNameMap[fieldName]
+			fieldKind := sm.columnNameFieldKindMap[columnName]
+			var condition string
+			if fieldKind == reflect.Int || fieldKind == reflect.Int64 {
+				condition = columnName + "=" + fieldValue
+			} else {
+				condition = columnName + "='" + fieldValue + "'"
+			}
+			conditionValues = append(conditionValues, condition)
 		}
 	}
 

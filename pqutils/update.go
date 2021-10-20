@@ -10,7 +10,7 @@ import (
 // UpdateOne Assumes that v is the full record to be updated.  That is, UpdateOne will first check to see
 // if v can be located using the primarykey on schema type.  If a record can be found, then the value of that
 // record will be replaced with v in the database.
-func DeleteOne(db *sql.DB, table string, v interface{}) error {
+func UpdateOne(db *sql.DB, table string, v interface{}) error {
 	err := checkKindStruct(v)
 	if err != nil {
 		return err
@@ -35,27 +35,41 @@ func DeleteOne(db *sql.DB, table string, v interface{}) error {
 		return err
 	}
 	if len(result) != 1 {
-		return errors.New("invalid record for delete: cannot find unique value for primary key values of v")
+		return errors.New("invalid record for update: cannot find unique value for primary key values of v")
 	}
 
-	return deleteAllWithOptions(db, table, v, where)
+	return updateAllWithOptions(db, table, v, where)
+
 }
 
-func DeleteAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]string) error {
-	return deleteAllWithOptions(db, table, schemaType, where)
+func UpdateAllWithOptions(db *sql.DB, table string, v interface{}, where map[string]string) error {
+	return updateAllWithOptions(db, table, v, where)
 }
-func deleteAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]string) error {
+
+func updateAllWithOptions(db *sql.DB, table string, v interface{}, where map[string]string) error {
 	if where == nil {
 		return errors.New("invalid where condition: where must be non-nil")
 	}
 
-	err := checkKindStruct(schemaType)
+	err := checkKindStruct(v)
 	if err != nil {
 		return err
 	}
 
-	stmt := `DELETE FROM ` + table +
-		whereConditionString(schemaType, where)
+	sm := parseSchemaTypeValue(&v)
+
+	// TODO... consider making this a standard parameterized exec
+	stmtColumns := sm.columnNames
+	var stmtValues []string
+	for _, columnName := range stmtColumns {
+		fieldName := sm.columnNameFieldNameMap[columnName]
+		stmtValues = append(stmtValues, "'"+sm.fieldNameStringValueMap[fieldName]+"'")
+	}
+
+	stmt := `UPDATE ` + table + ` ` +
+		`SET (` + strings.Join(stmtColumns, ", ") + `) = ` +
+		`(` + strings.Join(stmtValues, ", ") + `) ` +
+		whereConditionString(v, where)
 
 	// Execute the Statement
 	ctx := context.Background()
