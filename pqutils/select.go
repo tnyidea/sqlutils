@@ -29,27 +29,37 @@ func SelectOne(db *sql.DB, table string, v interface{}) (interface{}, error) {
 
 	// Test for uniqueness, if valid should only have one record that matches
 	emptyResult := reflect.New(reflect.ValueOf(v).Type()).Elem().Interface()
-	result, err := selectAllWithOptions(db, table, v, where, QueryOptions{})
+	rows, err := selectAllWithOptions(db, table, v, where, QueryOptions{})
 	if err != nil {
 		return emptyResult, err
 	}
-	if len(result) != 1 {
+
+	var result interface{}
+	if rows.Next() {
+		rowResult, err := unmarshalRowsResult(rows, v)
+		if err != nil {
+			return nil, err
+		}
+		result = rowResult
+	}
+
+	if result == nil {
 		return emptyResult, errors.New("not found: cannot find unique value for primary key values of v")
 	}
 
-	return result[0], nil
+	return result, nil
 }
 
-func SelectAll(db *sql.DB, table string, schemaType interface{}) ([]interface{}, error) {
+func SelectAll(db *sql.DB, table string, schemaType interface{}) (*sql.Rows, error) {
 	return selectAllWithOptions(db, table, schemaType, nil, QueryOptions{})
 }
 
-func SelectAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]string, options QueryOptions) ([]interface{}, error) {
+func SelectAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]string, options QueryOptions) (*sql.Rows, error) {
 	return selectAllWithOptions(db, table, schemaType, where, options)
 }
 
 func selectAllWithOptions(db *sql.DB, table string, schemaType interface{},
-	where map[string]string, options QueryOptions) ([]interface{}, error) {
+	where map[string]string, options QueryOptions) (*sql.Rows, error) {
 
 	sm := parseSchemaTypeValue(&schemaType)
 
@@ -76,22 +86,5 @@ func selectAllWithOptions(db *sql.DB, table string, schemaType interface{},
 		_ = rows.Close()
 	}()
 
-	// Gather column and struct information
-	sm = parseSchemaTypeValue(&schemaType)
-	columnTypes, err := rows.ColumnTypes()
-	if err != nil {
-		return nil, err
-	}
-
-	// Collect the results
-	var result []interface{}
-	for rows.Next() {
-		rowResult, err := unmarshalRowsResult(rows, columnTypes, schemaType, sm)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, rowResult)
-	}
-
-	return result, nil
+	return rows, nil
 }

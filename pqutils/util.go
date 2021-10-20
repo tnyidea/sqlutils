@@ -84,8 +84,15 @@ func parseSchemaTypeValue(v interface{}) structMetadata {
 	return sm
 }
 
-func unmarshalRowsResult(rows *sql.Rows, columnTypes []*sql.ColumnType, schemaType interface{}, sm structMetadata) (interface{}, error) {
+func UnmarshalRowsResult(rows *sql.Rows, schemaType interface{}) (interface{}, error) {
 	// assume schemaType is a struct
+
+	sm := parseSchemaTypeValue(&schemaType)
+
+	columnTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, err
+	}
 
 	var sd []interface{}
 	for range columnTypes {
@@ -94,7 +101,7 @@ func unmarshalRowsResult(rows *sql.Rows, columnTypes []*sql.ColumnType, schemaTy
 		var v interface{}
 		sd = append(sd, &v)
 	}
-	err := rows.Scan(sd...)
+	err = rows.Scan(sd...)
 	if err != nil {
 		return nil, err
 	}
