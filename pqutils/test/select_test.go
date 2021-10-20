@@ -2,24 +2,13 @@ package test
 
 import (
 	"database/sql"
-	"github.com/gbnyc26/configurator"
 	"github.com/gbnyc26/sqlutils/pqutils"
 	"log"
 	"testing"
 )
 
 func TestSelectAll(t *testing.T) {
-	type testConfig struct {
-		DbUrl string `env:"TEST_DB_URL"`
-	}
-
-	var config testConfig
-	err := configurator.SetEnvFromFile("test.env")
-	if err != nil {
-		log.Println(err)
-		t.FailNow()
-	}
-	err = configurator.ParseEnvConfig(&config)
+	config, err := configureTest()
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
@@ -46,17 +35,7 @@ func TestSelectAll(t *testing.T) {
 }
 
 func TestSelectOne(t *testing.T) {
-	type testConfig struct {
-		DbUrl string `env:"TEST_DB_URL"`
-	}
-
-	var config testConfig
-	err := configurator.SetEnvFromFile("test.env")
-	if err != nil {
-		log.Println(err)
-		t.FailNow()
-	}
-	err = configurator.ParseEnvConfig(&config)
+	config, err := configureTest()
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
@@ -68,7 +47,7 @@ func TestSelectOne(t *testing.T) {
 		t.FailNow()
 	}
 
-	result, err := pqutils.SelectOne(db, "test_table", testType{}, map[string]string{"LastName": "Smith"})
+	result, err := pqutils.SelectOne(db, "test_table", testType{Id: 2})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
@@ -77,4 +56,30 @@ func TestSelectOne(t *testing.T) {
 	log.Println(result)
 	w := result.(testType)
 	log.Println(&w)
+}
+
+func TestSelectAllWithOptions(t *testing.T) {
+	config, err := configureTest()
+	if err != nil {
+		log.Println(err)
+		t.FailNow()
+	}
+
+	db, err := sql.Open("postgres", config.DbUrl)
+	if err != nil {
+		log.Println(err)
+		t.FailNow()
+	}
+
+	result, err := pqutils.SelectAllWithOptions(db, "test_table", testType{}, map[string]string{"LastName": "Smith"}, pqutils.QueryOptions{})
+	if err != nil {
+		log.Println(err)
+		t.FailNow()
+	}
+
+	log.Println(result)
+	for _, v := range result {
+		w := v.(testType)
+		log.Println(&w)
+	}
 }
