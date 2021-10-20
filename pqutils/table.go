@@ -171,3 +171,40 @@ func DropTable(db *sql.DB, table string) error {
 	return nil
 
 }
+
+// DEPRECATED -- Maybe keep?
+
+/*
+func ReplaceTable(oldTable string, newTable string) (err error) {
+	ctx := context.Background()
+	conn, err := d.Db.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	tx, err := conn.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	query := `
+        ALTER TABLE ` + oldTable + ` RENAME TO ` + oldTable + `_old;
+        ALTER TABLE ` + newTable + ` RENAME TO ` + oldTable + `;
+	    DROP TABLE ` + oldTable + `_old;`
+	_, err = tx.ExecContext(ctx, query)
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+*/

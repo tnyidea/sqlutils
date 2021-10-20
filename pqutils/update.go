@@ -43,6 +43,8 @@ func UpdateOne(db *sql.DB, table string, v interface{}) error {
 }
 
 func UpdateAllWithOptions(db *sql.DB, table string, v interface{}, where map[string]string) error {
+	// TODO need to come up with a mask or something to decide which values actually get updated
+	//   OR does schemaType need to be a struct of pointers?
 	return updateAllWithOptions(db, table, v, where)
 }
 
