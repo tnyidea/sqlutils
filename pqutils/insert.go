@@ -9,23 +9,18 @@ import (
 	"strings"
 )
 
-func InsertOne(db *sql.DB, table string, v interface{}) error {
+func InsertOne(db *sql.DB, table string, v interface{}) (sql.Result, error) {
 	// Create the connection
 	ctx := context.Background()
 	conn, err := db.Conn(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() {
 		_ = conn.Close()
 	}()
 
-	err = insertOne(conn, ctx, table, v)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return insertOne(conn, ctx, table, v)
 }
 
 func InsertAll(db *sql.DB, table string, v []interface{}) error {
@@ -39,8 +34,10 @@ func InsertAll(db *sql.DB, table string, v []interface{}) error {
 		_ = conn.Close()
 	}()
 
+	// TODO there is no provision for insertAll in sql.  Should we interfere with
+	//   driver implementation and construct our own result?
 	for _, value := range v {
-		err := insertOne(conn, ctx, table, value)
+		_, err := insertOne(conn, ctx, table, value)
 		if err != nil {
 			return err
 		}
@@ -132,13 +129,14 @@ func BulkInsert(db *sql.DB, table string, v []interface{}) error {
 
 // Helpers
 
-func insertOne(conn *sql.Conn, ctx context.Context, table string, v interface{}) error {
+func insertOne(conn *sql.Conn, ctx context.Context, table string, v interface{}) (sql.Result, error) {
 	err := checkKindStruct(v)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	sm := parseSchemaTypeValue(&v)
+	log.Println(&sm)
 
 	var stmtColumns []string
 	for _, columnName := range sm.columnNames {
@@ -163,10 +161,5 @@ func insertOne(conn *sql.Conn, ctx context.Context, table string, v interface{})
 		`VALUES (` + strings.Join(stmtValues, ", ") + `)`
 
 	// Execute the Statement
-	_, err = conn.ExecContext(ctx, stmt)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return conn.ExecContext(ctx, stmt)
 }

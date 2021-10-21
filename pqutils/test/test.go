@@ -9,7 +9,7 @@ type testType struct {
 	Id         int    `json:"id" sql:"id,primarykey,serial"`
 	FirstName  string `json:"firstName" sql:"first_name"`
 	MiddleName string `json:"middleName" sql:"middle_name"`
-	LastName   string `json:"lastName" sql:"last_name,unique"`
+	LastName   string `json:"lastName" sql:"last_name"`
 }
 
 func (p *testType) String() string {

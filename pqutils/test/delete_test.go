@@ -23,9 +23,11 @@ func TestDeleteOne(t *testing.T) {
 	dataType := testType{
 		Id: 1,
 	}
-	err = pqutils.DeleteOne(db, "test_table", dataType)
+	sqlResult, err := pqutils.DeleteOne(db, "test_table", dataType)
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
 	}
+
+	log.Println(sqlResult)
 }

@@ -7,17 +7,18 @@ import (
 	"strings"
 )
 
-// UpdateOne Assumes that v is the full record to be updated.  That is, UpdateOne will first check to see
-// if v can be located using the primarykey on schema type.  If a record can be found, then the value of that
-// record will be replaced with v in the database.
-func DeleteOne(db *sql.DB, table string, v interface{}) error {
+// DeleteOne will construct a where condition from the primarykey tags on v.  It will then
+// perform a delete of the record in the specified table that matches the primary key.  If
+// the delete fails, an error will be returned.
+func DeleteOne(db *sql.DB, table string, v interface{}) (sql.Result, error) {
 	err := checkKindStruct(v)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	sm := parseSchemaTypeValue(&v)
 
+	// TODO: What about composite keys?
 	var where map[string]string
 	for columnName, keyType := range sm.columnKeyTypeMap {
 		if strings.Contains(keyType, "primarykey") {
@@ -29,29 +30,27 @@ func DeleteOne(db *sql.DB, table string, v interface{}) error {
 		}
 	}
 
-	// Test for uniqueness, if valid should only have one record that matches
-	rows, err := SelectAllWithOptions(db, table, v, where, QueryOptions{})
-	if err != nil {
-		return err
-	}
-	if !rows.Next() {
-		return errors.New("invalid record for delete: cannot find unique value for primary key values of v")
-	}
-
 	return deleteAllWithOptions(db, table, v, where)
 }
 
-func DeleteAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]string) error {
-	return deleteAllWithOptions(db, table, schemaType, where)
-}
-func deleteAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]string) error {
+func DeleteAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]string) (sql.Result, error) {
 	if where == nil {
-		return errors.New("invalid where condition: where must be non-nil")
+		return nil, errors.New("invalid where condition: where must be non-nil.  Use UnsafeDeleteAll to delete all records")
 	}
 
+	return deleteAllWithOptions(db, table, schemaType, where)
+}
+
+// UnsafeDeleteAll deletes ALL RECORDS from the specified table. This is marked with the
+// prefix Unsafe to remind the user that it is a destructive function and should be used carefully.
+func UnsafeDeleteAll(db *sql.DB, table string) (sql.Result, error) {
+	return deleteAllWithOptions(db, table, struct{}{}, nil)
+}
+
+func deleteAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]string) (sql.Result, error) {
 	err := checkKindStruct(schemaType)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	stmt := `DELETE FROM ` + table +
@@ -61,16 +60,11 @@ func deleteAllWithOptions(db *sql.DB, table string, schemaType interface{}, wher
 	ctx := context.Background()
 	conn, err := db.Conn(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() {
 		_ = conn.Close()
 	}()
 
-	_, err = conn.ExecContext(ctx, stmt)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return conn.ExecContext(ctx, stmt)
 }
