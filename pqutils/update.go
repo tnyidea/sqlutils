@@ -8,8 +8,8 @@ import (
 )
 
 // UpdateOne will construct a where condition from the primarykey tags on v.  It will then
-// perform an update of the record in the specified table that matches the primary key.  If
-// the update fails, an error will be returned.
+// perform an update of the record in the specified table that matches the primary key, using
+// the ENTIRE value of v.  If the update fails, an error will be returned.
 func UpdateOne(db *sql.DB, table string, v interface{}) (sql.Result, error) {
 	err := checkKindStruct(v)
 	if err != nil {

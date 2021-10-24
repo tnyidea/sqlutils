@@ -1,6 +1,6 @@
 module github.com/gbnyc26/sqlutils
 
-go 1.16
+go 1.17
 
 require (
 	github.com/gbnyc26/configurator v0.3.0
