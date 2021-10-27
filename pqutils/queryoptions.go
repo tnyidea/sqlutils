@@ -1,6 +1,7 @@
 package pqutils
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -33,7 +34,7 @@ func (p *QueryOptions) String() string {
 
 // Helpers
 
-func whereConditionString(schemaType interface{}, where map[string]string) string {
+func whereConditionString(schemaType interface{}, where map[string]interface{}) string {
 	if where == nil {
 		return ""
 	}
@@ -47,9 +48,9 @@ func whereConditionString(schemaType interface{}, where map[string]string) strin
 			fieldKind := sm.columnNameFieldKindMap[columnName]
 			var condition string
 			if fieldKind == reflect.Int || fieldKind == reflect.Int64 {
-				condition = columnName + "=" + fieldValue
+				condition = columnName + "=" + fmt.Sprintf("%v", fieldValue)
 			} else {
-				condition = columnName + "='" + fieldValue + "'"
+				condition = columnName + "='" + fmt.Sprintf("%v", fieldValue) + "'"
 			}
 			conditionValues = append(conditionValues, condition)
 		}

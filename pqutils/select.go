@@ -16,11 +16,11 @@ func SelectOne(db *sql.DB, table string, v interface{}) (interface{}, error) {
 
 	sm := parseSchemaTypeValue(&v)
 
-	var where map[string]string
+	var where map[string]interface{}
 	for columnName, keyType := range sm.columnKeyTypeMap {
 		if strings.Contains(keyType, "primarykey") {
 			if where == nil {
-				where = make(map[string]string)
+				where = make(map[string]interface{})
 			}
 			fieldName := sm.columnNameFieldNameMap[columnName]
 			where[fieldName] = sm.fieldNameStringValueMap[fieldName]
@@ -55,12 +55,12 @@ func SelectAll(db *sql.DB, table string, schemaType interface{}) (*sql.Rows, err
 	return selectAllWithOptions(db, table, schemaType, nil, QueryOptions{})
 }
 
-func SelectAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]string, options QueryOptions) (*sql.Rows, error) {
+func SelectAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]interface{}, options QueryOptions) (*sql.Rows, error) {
 	return selectAllWithOptions(db, table, schemaType, where, options)
 }
 
 func selectAllWithOptions(db *sql.DB, table string, schemaType interface{},
-	where map[string]string, options QueryOptions) (*sql.Rows, error) {
+	where map[string]interface{}, options QueryOptions) (*sql.Rows, error) {
 
 	sm := parseSchemaTypeValue(&schemaType)
 

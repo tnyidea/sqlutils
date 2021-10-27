@@ -77,7 +77,7 @@ func TestSelectAllWithOptions(t *testing.T) {
 		t.FailNow()
 	}
 
-	rows, err := pqutils.SelectAllWithOptions(db, "test_table", testType{}, map[string]string{"LastName": "Smith"}, pqutils.QueryOptions{})
+	rows, err := pqutils.SelectAllWithOptions(db, "test_table", testType{}, map[string]interface{}{"LastName": "Smith"}, pqutils.QueryOptions{})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()

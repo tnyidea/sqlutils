@@ -18,11 +18,11 @@ func UpdateOne(db *sql.DB, table string, v interface{}) (sql.Result, error) {
 
 	sm := parseSchemaTypeValue(&v)
 
-	var where map[string]string
+	var where map[string]interface{}
 	for columnName, keyType := range sm.columnKeyTypeMap {
 		if strings.Contains(keyType, "primarykey") {
 			if where == nil {
-				where = make(map[string]string)
+				where = make(map[string]interface{})
 			}
 			fieldName := sm.columnNameFieldNameMap[columnName]
 			where[fieldName] = sm.fieldNameStringValueMap[fieldName]
@@ -32,7 +32,7 @@ func UpdateOne(db *sql.DB, table string, v interface{}) (sql.Result, error) {
 	return updateAllWithOptions(db, table, v, nil, where)
 }
 
-func UpdateAllWithOptions(db *sql.DB, table string, v interface{}, mask []string, where map[string]string) (sql.Result, error) {
+func UpdateAllWithOptions(db *sql.DB, table string, v interface{}, mask []string, where map[string]interface{}) (sql.Result, error) {
 	if where == nil {
 		return nil, errors.New("invalid where condition: where must be non-nil. Use UnsafeUpdateAll to update all records")
 	}
@@ -47,7 +47,7 @@ func UnsafeUpdateAll(db *sql.DB, table string, v interface{}, mask []string) (sq
 	return updateAllWithOptions(db, table, v, mask, nil)
 }
 
-func updateAllWithOptions(db *sql.DB, table string, v interface{}, mask []string, where map[string]string) (sql.Result, error) {
+func updateAllWithOptions(db *sql.DB, table string, v interface{}, mask []string, where map[string]interface{}) (sql.Result, error) {
 	// TODO need to come up with a mask or something to decide which values actually get updated
 	//   OR does schemaType need to be a struct of pointers?
 

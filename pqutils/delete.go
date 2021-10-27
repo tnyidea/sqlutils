@@ -19,11 +19,11 @@ func DeleteOne(db *sql.DB, table string, v interface{}) (sql.Result, error) {
 	sm := parseSchemaTypeValue(&v)
 
 	// TODO: What about composite keys?
-	var where map[string]string
+	var where map[string]interface{}
 	for columnName, keyType := range sm.columnKeyTypeMap {
 		if strings.Contains(keyType, "primarykey") {
 			if where == nil {
-				where = make(map[string]string)
+				where = make(map[string]interface{})
 			}
 			fieldName := sm.columnNameFieldNameMap[columnName]
 			where[fieldName] = sm.fieldNameStringValueMap[fieldName]
@@ -33,7 +33,7 @@ func DeleteOne(db *sql.DB, table string, v interface{}) (sql.Result, error) {
 	return deleteAllWithOptions(db, table, v, where)
 }
 
-func DeleteAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]string) (sql.Result, error) {
+func DeleteAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]interface{}) (sql.Result, error) {
 	if where == nil {
 		return nil, errors.New("invalid where condition: where must be non-nil.  Use UnsafeDeleteAll to delete all records")
 	}
@@ -47,7 +47,7 @@ func UnsafeDeleteAll(db *sql.DB, table string) (sql.Result, error) {
 	return deleteAllWithOptions(db, table, struct{}{}, nil)
 }
 
-func deleteAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]string) (sql.Result, error) {
+func deleteAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]interface{}) (sql.Result, error) {
 	err := checkKindStruct(schemaType)
 	if err != nil {
 		return nil, err
