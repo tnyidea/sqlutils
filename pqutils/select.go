@@ -33,6 +33,9 @@ func SelectOne(db *sql.DB, table string, v interface{}) (interface{}, error) {
 	if err != nil {
 		return emptyResult, err
 	}
+	if !rows.Next() {
+		return emptyResult, nil
+	}
 
 	var result interface{}
 	// TODO Reconsider this... we want to make sure that there is absolutely 1 record that matches

@@ -64,6 +64,30 @@ func TestSelectOne(t *testing.T) {
 	log.Println(&w)
 }
 
+func TestSelectOneNoResult(t *testing.T) {
+	config, err := configureTest()
+	if err != nil {
+		log.Println(err)
+		t.FailNow()
+	}
+
+	db, err := sql.Open("postgres", config.DbUrl)
+	if err != nil {
+		log.Println(err)
+		t.FailNow()
+	}
+
+	result, err := pqutils.SelectOne(db, "test_table", testType{Id: 99})
+	if err != nil {
+		log.Println(err)
+		t.FailNow()
+	}
+
+	log.Println(result)
+	w := result.(testType)
+	log.Println(&w)
+}
+
 func TestSelectAllWithOptions(t *testing.T) {
 	config, err := configureTest()
 	if err != nil {

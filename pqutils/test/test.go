@@ -1,8 +1,10 @@
 package test
 
 import (
+	"bufio"
 	"encoding/json"
-	"github.com/gbnyc26/configurator"
+	"os"
+	"strings"
 )
 
 type testType struct {
@@ -18,18 +20,34 @@ func (p *testType) String() string {
 }
 
 type testConfig struct {
-	DbUrl string `env:"TEST_DB_URL"`
+	DbUrl string
 }
 
 func configureTest() (testConfig, error) {
-	var config testConfig
-	err := configurator.SetEnvFromFile("test.env")
-	if err != nil {
-		return testConfig{}, nil
-	}
-	err = configurator.ParseEnvConfig(&config)
+	// Parse the env file
+	// Expected format is ENV_VAR=value, one per line
+	file, err := os.Open("test.env")
 	if err != nil {
 		return testConfig{}, err
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
+	var config testConfig
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		if err = scanner.Err(); err != nil {
+			return testConfig{}, err
+		}
+
+		// Only handle items of form VARIABLE=value
+		tokens := strings.Split(scanner.Text(), "=")
+		if len(tokens) == 2 {
+			if tokens[0] == "TEST_DB_URL" {
+				config.DbUrl = tokens[1]
+			}
+		}
 	}
 
 	return config, nil
