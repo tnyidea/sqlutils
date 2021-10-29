@@ -23,12 +23,12 @@ func InsertOne(db *sql.DB, table string, v interface{}) (sql.Result, error) {
 	return insertOne(conn, ctx, table, v)
 }
 
-func InsertAll(db *sql.DB, table string, v []interface{}) error {
+func InsertAll(db *sql.DB, table string, v []interface{}) ([]sql.Result, error) {
 	// Create the connection
 	ctx := context.Background()
 	conn, err := db.Conn(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() {
 		_ = conn.Close()
@@ -36,14 +36,17 @@ func InsertAll(db *sql.DB, table string, v []interface{}) error {
 
 	// TODO there is no provision for insertAll in sql.  Should we interfere with
 	//   driver implementation and construct our own result?
+	var results []sql.Result
 	for _, value := range v {
-		_, err := insertOne(conn, ctx, table, value)
+		result, err := insertOne(conn, ctx, table, value)
 		if err != nil {
-			return err
+			// we will return the results up until this point
+			return results, err
 		}
+		results = append(results, result)
 	}
 
-	return nil
+	return results, nil
 }
 
 func BulkInsert(db *sql.DB, table string, v []interface{}) error {

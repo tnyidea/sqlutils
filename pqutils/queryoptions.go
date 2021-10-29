@@ -56,10 +56,9 @@ func whereConditionString(schemaType interface{}, where map[string]interface{}) 
 		}
 	}
 
-	var s string
 	if conditionValues != nil {
-		s = " WHERE " + strings.Join(conditionValues, " AND ")
+		return " WHERE " + strings.Join(conditionValues, " AND ")
 	}
 
-	return s
+	return ""
 }

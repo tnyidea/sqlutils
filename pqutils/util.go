@@ -84,7 +84,7 @@ func parseSchemaTypeValue(v interface{}) structMetadata {
 	return sm
 }
 
-func UnmarshalRowsResult(rows *sql.Rows, schemaType interface{}) (interface{}, error) {
+func unmarshalRowsResult(rows *sql.Rows, schemaType interface{}) (interface{}, error) {
 	// assume schemaType is a struct
 
 	sm := parseSchemaTypeValue(&schemaType)

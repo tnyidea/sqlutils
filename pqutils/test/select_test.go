@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"github.com/gbnyc26/sqlutils/pqutils"
 	"log"
+	"reflect"
 	"testing"
 )
 
@@ -20,23 +21,13 @@ func TestSelectAll(t *testing.T) {
 		t.FailNow()
 	}
 
-	rows, err := pqutils.SelectAll(db, "test_table", testType{})
+	results, err := pqutils.SelectAll(db, "test_table", testType{})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
 	}
 
-	// Collect the results
-	var result []testType
-	for rows.Next() {
-		rowResult, err := pqutils.UnmarshalRowsResult(rows, testType{})
-		if err != nil {
-			log.Println(err)
-			t.FailNow()
-		}
-		result = append(result, rowResult.(testType))
-	}
-	log.Println(result)
+	log.Println(results)
 
 }
 
@@ -53,9 +44,15 @@ func TestSelectOne(t *testing.T) {
 		t.FailNow()
 	}
 
-	result, err := pqutils.SelectOne(db, "test_table", testType{Id: 2})
+	testQuery := testType{Id: 2}
+	result, err := pqutils.SelectOne(db, "test_table", testQuery)
 	if err != nil {
 		log.Println(err)
+		t.FailNow()
+	}
+
+	if reflect.ValueOf(result).IsZero() {
+		log.Println("expected: non-empty result for testQuery:", testQuery)
 		t.FailNow()
 	}
 
@@ -88,6 +85,29 @@ func TestSelectOneNoResult(t *testing.T) {
 	log.Println(&w)
 }
 
+func TestSelectOneMultipleResults(t *testing.T) {
+	config, err := configureTest()
+	if err != nil {
+		log.Println(err)
+		t.FailNow()
+	}
+
+	db, err := sql.Open("postgres", config.DbUrl)
+	if err != nil {
+		log.Println(err)
+		t.FailNow()
+	}
+
+	result, err := pqutils.SelectOne(db, "test_table", testType{LastName: "Smith"})
+	if err == nil {
+		log.Println("expected: error condition for multiple results for SelectOne()")
+		t.FailNow()
+	}
+
+	log.Println(err)
+	log.Println(result)
+}
+
 func TestSelectAllWithOptions(t *testing.T) {
 	config, err := configureTest()
 	if err != nil {
@@ -101,21 +121,10 @@ func TestSelectAllWithOptions(t *testing.T) {
 		t.FailNow()
 	}
 
-	rows, err := pqutils.SelectAllWithOptions(db, "test_table", testType{}, map[string]interface{}{"LastName": "Smith"}, pqutils.QueryOptions{})
+	results, err := pqutils.SelectAllWithOptions(db, "test_table", testType{}, map[string]interface{}{"FirstName": "John"}, pqutils.QueryOptions{})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
 	}
-
-	// Collect the results
-	var result []testType
-	for rows.Next() {
-		rowResult, err := pqutils.UnmarshalRowsResult(rows, testType{})
-		if err != nil {
-			log.Println(err)
-			t.FailNow()
-		}
-		result = append(result, rowResult.(testType))
-	}
-	log.Println(result)
+	log.Println(results)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log"
 	"reflect"
 	"strings"
 )
@@ -23,47 +24,38 @@ func SelectOne(db *sql.DB, table string, v interface{}) (interface{}, error) {
 				where = make(map[string]interface{})
 			}
 			fieldName := sm.columnNameFieldNameMap[columnName]
-			where[fieldName] = sm.fieldNameStringValueMap[fieldName]
+			fieldValue := sm.fieldNameStringValueMap[fieldName]
+
+			if reflect.ValueOf(v).FieldByName(fieldName).IsZero() {
+				return nil, errors.New("error: zero value recieved for primary key field: " + fieldName + ". All primary key fields must be non-zero")
+			}
+			where[fieldName] = fieldValue
 		}
 	}
 
 	// Test for uniqueness, if valid should only have one record that matches
 	emptyResult := reflect.New(reflect.ValueOf(v).Type()).Elem().Interface()
-	rows, err := selectAllWithOptions(db, table, v, where, QueryOptions{})
+	results, err := selectAllWithOptions(db, table, v, where, QueryOptions{})
 	if err != nil {
 		return emptyResult, err
 	}
-	if !rows.Next() {
+	if len(results) == 0 {
 		return emptyResult, nil
 	}
 
-	var result interface{}
-	// TODO Reconsider this... we want to make sure that there is absolutely 1 record that matches
-	if !rows.Next() {
-		rowResult, err := UnmarshalRowsResult(rows, v)
-		if err != nil {
-			return nil, err
-		}
-		result = rowResult
-	}
-
-	if result == nil {
-		return emptyResult, errors.New("not found: cannot find unique value for primary key values of v")
-	}
-
-	return result, nil
+	return results[0], nil
 }
 
-func SelectAll(db *sql.DB, table string, schemaType interface{}) (*sql.Rows, error) {
+func SelectAll(db *sql.DB, table string, schemaType interface{}) ([]interface{}, error) {
 	return selectAllWithOptions(db, table, schemaType, nil, QueryOptions{})
 }
 
-func SelectAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]interface{}, options QueryOptions) (*sql.Rows, error) {
+func SelectAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]interface{}, options QueryOptions) ([]interface{}, error) {
 	return selectAllWithOptions(db, table, schemaType, where, options)
 }
 
 func selectAllWithOptions(db *sql.DB, table string, schemaType interface{},
-	where map[string]interface{}, options QueryOptions) (*sql.Rows, error) {
+	where map[string]interface{}, options QueryOptions) ([]interface{}, error) {
 
 	sm := parseSchemaTypeValue(&schemaType)
 
@@ -71,6 +63,7 @@ func selectAllWithOptions(db *sql.DB, table string, schemaType interface{},
 		FROM ` + table +
 		whereConditionString(schemaType, where) +
 		options.String()
+	log.Println(query)
 
 	// Execute the Query
 	ctx := context.Background()
@@ -90,5 +83,15 @@ func selectAllWithOptions(db *sql.DB, table string, schemaType interface{},
 		_ = rows.Close()
 	}()
 
-	return rows, nil
+	// Collect the results
+	var results []interface{}
+	for rows.Next() {
+		rowResult, err := unmarshalRowsResult(rows, schemaType)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, rowResult)
+	}
+
+	return results, nil
 }
