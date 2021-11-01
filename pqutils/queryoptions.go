@@ -34,18 +34,23 @@ func (p *QueryOptions) String() string {
 
 // Helpers
 
-func whereConditionString(schemaType interface{}, where map[string]interface{}) string {
+func whereConditionString(schema interface{}, where map[string]interface{}) (string, error) {
+	// Assumption: schema is a pointer to a struct
+
 	if where == nil {
-		return ""
+		return "", nil
 	}
 
-	sm := parseSchemaTypeValue(&schemaType)
+	scm, err := parseSchemaMetadata(schema)
+	if err != nil {
+		return "", err
+	}
 
 	var conditionValues []string
 	for fieldName, fieldValue := range where {
 		if fieldValue != "" {
-			columnName := sm.fieldNameColumnNameMap[fieldName]
-			fieldKind := sm.columnNameFieldKindMap[columnName]
+			columnName := scm.fieldNameColumnNameMap[fieldName]
+			fieldKind := scm.columnNameFieldKindMap[columnName]
 			var condition string
 			if fieldKind == reflect.Int || fieldKind == reflect.Int64 {
 				condition = columnName + "=" + fmt.Sprintf("%v", fieldValue)
@@ -57,8 +62,8 @@ func whereConditionString(schemaType interface{}, where map[string]interface{}) 
 	}
 
 	if conditionValues != nil {
-		return " WHERE " + strings.Join(conditionValues, " AND ")
+		return " WHERE " + strings.Join(conditionValues, " AND "), nil
 	}
 
-	return ""
+	return "", nil
 }

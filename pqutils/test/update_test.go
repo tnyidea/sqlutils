@@ -20,13 +20,12 @@ func TestUpdateOne(t *testing.T) {
 		t.FailNow()
 	}
 
-	dataType := testType{
-		Id:         1,
-		FirstName:  "Jane",
-		MiddleName: "M",
+	sqlResult, err := pqutils.UpdateOne(db, "test_table", &testType{
+		Id:         4,
+		FirstName:  "John",
+		MiddleName: "H",
 		LastName:   "Smith",
-	}
-	sqlResult, err := pqutils.UpdateOne(db, "test_table", dataType)
+	})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()

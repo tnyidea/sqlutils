@@ -20,12 +20,11 @@ func TestInsertOne(t *testing.T) {
 		t.FailNow()
 	}
 
-	testValue := testType{
+	sqlResult, err := pqutils.InsertOne(db, "test_table", &testType{
 		FirstName:  "Jane",
 		MiddleName: "H",
 		LastName:   "Smith",
-	}
-	sqlResult, err := pqutils.InsertOne(db, "test_table", testValue)
+	})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()

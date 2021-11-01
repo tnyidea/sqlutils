@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -11,21 +12,25 @@ import (
 // perform an update of the record in the specified table that matches the primary key, using
 // the ENTIRE value of v.  If the update fails, an error will be returned.
 func UpdateOne(db *sql.DB, table string, v interface{}) (sql.Result, error) {
-	err := checkKindStruct(v)
+	// Assumption: v is a pointer to a struct
+
+	scm, err := parseSchemaMetadata(v)
+	if err != nil {
+		return nil, err
+	}
+	stm, err := parseStructMetadata(v)
 	if err != nil {
 		return nil, err
 	}
 
-	sm := parseSchemaTypeValue(&v)
-
 	var where map[string]interface{}
-	for columnName, keyType := range sm.columnKeyTypeMap {
+	for columnName, keyType := range scm.columnKeyTypeMap {
 		if strings.Contains(keyType, "primarykey") {
 			if where == nil {
 				where = make(map[string]interface{})
 			}
-			fieldName := sm.columnNameFieldNameMap[columnName]
-			where[fieldName] = sm.fieldNameStringValueMap[fieldName]
+			fieldName := scm.columnNameFieldNameMap[columnName]
+			where[fieldName] = stm.fieldNameValueMap[fieldName]
 		}
 	}
 
@@ -48,30 +53,38 @@ func UnsafeUpdateAll(db *sql.DB, table string, v interface{}, mask []string) (sq
 }
 
 func updateAllWithOptions(db *sql.DB, table string, v interface{}, mask []string, where map[string]interface{}) (sql.Result, error) {
+	// Assumption: v is a pointer to a struct
+
 	// TODO need to come up with a mask or something to decide which values actually get updated
 	//   OR does schemaType need to be a struct of pointers?
 
-	err := checkKindStruct(v)
+	scm, err := parseSchemaMetadata(v)
+	if err != nil {
+		return nil, err
+	}
+	stm, err := parseStructMetadata(v)
 	if err != nil {
 		return nil, err
 	}
 
-	sm := parseSchemaTypeValue(&v)
-
 	// TODO... consider making this a standard parameterized exec
-	stmtColumns := sm.columnNames
+	stmtColumns := scm.columnNames
 
 	// TODO Implement mask
 	var stmtValues []string
 	for _, columnName := range stmtColumns {
-		fieldName := sm.columnNameFieldNameMap[columnName]
-		stmtValues = append(stmtValues, "'"+sm.fieldNameStringValueMap[fieldName]+"'")
+		fieldName := scm.columnNameFieldNameMap[columnName]
+		stmtValues = append(stmtValues, "'"+fmt.Sprintf("%v", stm.fieldNameValueMap[fieldName])+"'")
 	}
 
+	whereCondition, err := whereConditionString(v, where)
+	if err != nil {
+		return nil, err
+	}
 	stmt := `UPDATE ` + table + ` ` +
 		`SET (` + strings.Join(stmtColumns, ", ") + `) = ` +
 		`(` + strings.Join(stmtValues, ", ") + `) ` +
-		whereConditionString(v, where)
+		whereCondition
 
 	// Execute the Statement
 	ctx := context.Background()

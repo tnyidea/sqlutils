@@ -4,29 +4,32 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
 	"reflect"
 	"strings"
 )
 
 func SelectOne(db *sql.DB, table string, v interface{}) (interface{}, error) {
-	err := checkKindStruct(v)
+	// Assumption: v is a pointer to a struct
+
+	scm, err := parseSchemaMetadata(v)
+	if err != nil {
+		return nil, err
+	}
+	stm, err := parseStructMetadata(v)
 	if err != nil {
 		return nil, err
 	}
 
-	sm := parseSchemaTypeValue(&v)
-
 	var where map[string]interface{}
-	for columnName, keyType := range sm.columnKeyTypeMap {
+	for columnName, keyType := range scm.columnKeyTypeMap {
 		if strings.Contains(keyType, "primarykey") {
 			if where == nil {
 				where = make(map[string]interface{})
 			}
-			fieldName := sm.columnNameFieldNameMap[columnName]
-			fieldValue := sm.fieldNameStringValueMap[fieldName]
+			fieldName := scm.columnNameFieldNameMap[columnName]
+			fieldValue := stm.fieldNameValueMap[fieldName]
 
-			if reflect.ValueOf(v).FieldByName(fieldName).IsZero() {
+			if reflect.Indirect(reflect.ValueOf(v)).FieldByName(fieldName).IsZero() {
 				return nil, errors.New("error: zero value recieved for primary key field: " + fieldName + ". All primary key fields must be non-zero")
 			}
 			where[fieldName] = fieldValue
@@ -34,7 +37,8 @@ func SelectOne(db *sql.DB, table string, v interface{}) (interface{}, error) {
 	}
 
 	// Test for uniqueness, if valid should only have one record that matches
-	emptyResult := reflect.New(reflect.ValueOf(v).Type()).Elem().Interface()
+	schemaType := reflect.Indirect(reflect.ValueOf(v)).Type()
+	emptyResult := reflect.New(schemaType).Elem().Interface()
 	results, err := selectAllWithOptions(db, table, v, where, QueryOptions{})
 	if err != nil {
 		return emptyResult, err
@@ -46,24 +50,32 @@ func SelectOne(db *sql.DB, table string, v interface{}) (interface{}, error) {
 	return results[0], nil
 }
 
-func SelectAll(db *sql.DB, table string, schemaType interface{}) ([]interface{}, error) {
-	return selectAllWithOptions(db, table, schemaType, nil, QueryOptions{})
+func SelectAll(db *sql.DB, table string, schema interface{}) ([]interface{}, error) {
+	return selectAllWithOptions(db, table, schema, nil, QueryOptions{})
 }
 
-func SelectAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]interface{}, options QueryOptions) ([]interface{}, error) {
-	return selectAllWithOptions(db, table, schemaType, where, options)
+func SelectAllWithOptions(db *sql.DB, table string, schema interface{}, where map[string]interface{}, options QueryOptions) ([]interface{}, error) {
+	return selectAllWithOptions(db, table, schema, where, options)
 }
 
-func selectAllWithOptions(db *sql.DB, table string, schemaType interface{},
+func selectAllWithOptions(db *sql.DB, table string, schema interface{},
 	where map[string]interface{}, options QueryOptions) ([]interface{}, error) {
+	// Assumption: schema is a pointer to a struct
 
-	sm := parseSchemaTypeValue(&schemaType)
+	// TODO consider passing a context that allows for the setting of metadata to improve performance
 
+	sm, err := parseSchemaMetadata(schema)
+	if err != nil {
+		return nil, err
+	}
+
+	whereCondition, err := whereConditionString(schema, where)
+	if err != nil {
+		return nil, err
+	}
 	query := `SELECT ` + strings.Join(sm.columnNames, ", ") + `
-		FROM ` + table +
-		whereConditionString(schemaType, where) +
-		options.String()
-	log.Println(query)
+		FROM ` + table + ` ` +
+		whereCondition + ` ` + options.String()
 
 	// Execute the Query
 	ctx := context.Background()
@@ -86,7 +98,8 @@ func selectAllWithOptions(db *sql.DB, table string, schemaType interface{},
 	// Collect the results
 	var results []interface{}
 	for rows.Next() {
-		rowResult, err := unmarshalRowsResult(rows, schemaType)
+		var rowResult interface{}
+		rowResult, err := unmarshalRowsResult(rows, schema)
 		if err != nil {
 			return nil, err
 		}

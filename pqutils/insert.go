@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/lib/pq"
 	"log"
 	"strings"
@@ -50,12 +51,16 @@ func InsertAll(db *sql.DB, table string, v []interface{}) ([]sql.Result, error) 
 }
 
 func BulkInsert(db *sql.DB, table string, v []interface{}) error {
+	// Assumption: interface{} elements of v are pointers to structs
 	if v == nil {
 		return errors.New("invalid slice: nil value recived for v. Nothing to insert")
 	}
 
-	schemaType := v[0]
-	sm := parseSchemaTypeValue(&schemaType)
+	schema := v[0]
+	scm, err := parseSchemaMetadata(schema)
+	if err != nil {
+		return err
+	}
 
 	// Create the connection
 	ctx := context.Background()
@@ -77,11 +82,11 @@ func BulkInsert(db *sql.DB, table string, v []interface{}) error {
 
 	var stmtColumns []string
 	// TODO make a util that reduces list of columnNames to strip those that use default
-	for _, columnName := range sm.columnNames {
+	for _, columnName := range scm.columnNames {
 		// We need to eliminate any key columns that are primarykey:serial
 		// so the database can default these values
 		// TODO perhaps a more robust approach is to assert in the type to use default?
-		if sm.columnKeyTypeMap[columnName] == "primarykey:serial" {
+		if scm.columnKeyTypeMap[columnName] == "primarykey:serial" {
 			continue
 		}
 		stmtColumns = append(stmtColumns, columnName)
@@ -95,10 +100,14 @@ func BulkInsert(db *sql.DB, table string, v []interface{}) error {
 		return err
 	}
 	for i, value := range v {
-		sm := parseSchemaTypeValue(value)
+		stm, err := parseStructMetadata(value)
+		if err != nil {
+			return err
+		}
 		var stmtValues []interface{}
 		for _, columnName := range stmtColumns {
-			stmtValues = append(stmtValues, sm.fieldNameValueMap[sm.columnNameFieldNameMap[columnName]])
+			fieldName := scm.columnNameFieldNameMap[columnName]
+			stmtValues = append(stmtValues, stm.fieldNameValueMap[fieldName])
 		}
 		log.Println("| Adding Value", i+1, "of", count)
 		_, err = stmt.ExecContext(ctx, stmtValues...)
@@ -130,23 +139,24 @@ func BulkInsert(db *sql.DB, table string, v []interface{}) error {
 	return nil
 }
 
-// Helpers
-
 func insertOne(conn *sql.Conn, ctx context.Context, table string, v interface{}) (sql.Result, error) {
-	err := checkKindStruct(v)
+	// Assumption: v is a pointer to a struct
+
+	scm, err := parseSchemaMetadata(v)
+	if err != nil {
+		return nil, err
+	}
+	stm, err := parseStructMetadata(v)
 	if err != nil {
 		return nil, err
 	}
 
-	sm := parseSchemaTypeValue(&v)
-	log.Println(&sm)
-
 	var stmtColumns []string
-	for _, columnName := range sm.columnNames {
+	for _, columnName := range scm.columnNames {
 		// We need to eliminate any key columns that are primarykey:serial
 		// so the database can default these values
 		// TODO perhaps a more robust approach is to assert in the type to use default?
-		if sm.columnKeyTypeMap[columnName] == "primarykey:serial" {
+		if scm.columnKeyTypeMap[columnName] == "primarykey:serial" {
 			continue
 		}
 		stmtColumns = append(stmtColumns, columnName)
@@ -155,13 +165,17 @@ func insertOne(conn *sql.Conn, ctx context.Context, table string, v interface{})
 	// TODO... consider making this a standard parameterized exec
 	var stmtValues []string
 	for _, columnName := range stmtColumns {
-		fieldName := sm.columnNameFieldNameMap[columnName]
-		stmtValues = append(stmtValues, "'"+sm.fieldNameStringValueMap[fieldName]+"'")
+		fieldName := scm.columnNameFieldNameMap[columnName]
+		stmtValues = append(stmtValues, "'"+fmt.Sprintf("%v", stm.fieldNameValueMap[fieldName])+"'")
 	}
 
-	stmt := `INSERT INTO ` + table + ` ` +
-		`(` + strings.Join(stmtColumns, ", ") + `) ` +
-		`VALUES (` + strings.Join(stmtValues, ", ") + `)`
+	// TODO Figure out how to get pointers to the key fields then construct the query
+	//   to return the key fields.  Then augment v and return it??
+
+	stmt := `INSERT INTO ` + table + `
+             (` + strings.Join(stmtColumns, ", ") + `)
+		     VALUES (` + strings.Join(stmtValues, ", ") + `)`
+	//RETURNING `
 
 	// Execute the Statement
 	return conn.ExecContext(ctx, stmt)

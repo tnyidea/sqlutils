@@ -23,7 +23,7 @@ func TestCreateTableFromType(t *testing.T) {
 		t.FailNow()
 	}
 
-	err = pqutils.CreateTableFromType(db, "test_table", testType{})
+	err = pqutils.CreateTableFromType(db, "test_table", &testType{})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
@@ -36,7 +36,11 @@ func TestCreateTableFromType(t *testing.T) {
 	}
 	sort.Strings(tableColumnNames)
 
-	typeColumnNames := pqutils.GetSchemaTypeColumnNames(testType{})
+	typeColumnNames, err := pqutils.GetSchemaColumnNames(&testType{})
+	if err != nil {
+		log.Println(err)
+		t.FailNow()
+	}
 	sort.Strings(typeColumnNames)
 
 	if !reflect.DeepEqual(tableColumnNames, typeColumnNames) {

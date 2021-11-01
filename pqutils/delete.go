@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -11,34 +12,38 @@ import (
 // perform a delete of the record in the specified table that matches the primary key.  If
 // the delete fails, an error will be returned.
 func DeleteOne(db *sql.DB, table string, v interface{}) (sql.Result, error) {
-	err := checkKindStruct(v)
+	// Assumption: v is a pointer to a struct
+
+	scm, err := parseSchemaMetadata(v)
+	if err != nil {
+		return nil, err
+	}
+	stm, err := parseStructMetadata(v)
 	if err != nil {
 		return nil, err
 	}
 
-	sm := parseSchemaTypeValue(&v)
-
 	// TODO: What about composite keys?
 	var where map[string]interface{}
-	for columnName, keyType := range sm.columnKeyTypeMap {
+	for columnName, keyType := range scm.columnKeyTypeMap {
 		if strings.Contains(keyType, "primarykey") {
 			if where == nil {
 				where = make(map[string]interface{})
 			}
-			fieldName := sm.columnNameFieldNameMap[columnName]
-			where[fieldName] = sm.fieldNameStringValueMap[fieldName]
+			fieldName := scm.columnNameFieldNameMap[columnName]
+			where[fieldName] = fmt.Sprintf("%v", stm.fieldNameValueMap[fieldName])
 		}
 	}
 
 	return deleteAllWithOptions(db, table, v, where)
 }
 
-func DeleteAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]interface{}) (sql.Result, error) {
+func DeleteAllWithOptions(db *sql.DB, table string, schema interface{}, where map[string]interface{}) (sql.Result, error) {
 	if where == nil {
 		return nil, errors.New("invalid where condition: where must be non-nil.  Use UnsafeDeleteAll to delete all records")
 	}
 
-	return deleteAllWithOptions(db, table, schemaType, where)
+	return deleteAllWithOptions(db, table, schema, where)
 }
 
 // UnsafeDeleteAll deletes ALL RECORDS from the specified table. This is marked with the
@@ -47,14 +52,11 @@ func UnsafeDeleteAll(db *sql.DB, table string) (sql.Result, error) {
 	return deleteAllWithOptions(db, table, struct{}{}, nil)
 }
 
-func deleteAllWithOptions(db *sql.DB, table string, schemaType interface{}, where map[string]interface{}) (sql.Result, error) {
-	err := checkKindStruct(schemaType)
-	if err != nil {
-		return nil, err
-	}
+func deleteAllWithOptions(db *sql.DB, table string, schema interface{}, where map[string]interface{}) (sql.Result, error) {
+	// Assumption: schema is a pointer to a struct
 
-	stmt := `DELETE FROM ` + table +
-		whereConditionString(schemaType, where)
+	whereCondition, err := whereConditionString(schema, where)
+	stmt := `DELETE FROM ` + table + ` ` + whereCondition
 
 	// Execute the Statement
 	ctx := context.Background()

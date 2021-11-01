@@ -8,15 +8,15 @@ import (
 	"time"
 )
 
-func CreateTableFromType(db *sql.DB, table string, schemaType interface{}) error {
-	err := checkKindStruct(schemaType)
+func CreateTableFromType(db *sql.DB, table string, schema interface{}) error {
+	// Assumption: schema is a pointer to a struct
+
+	scm, err := parseSchemaMetadata(schema)
 	if err != nil {
 		return err
 	}
-
-	sm := parseSchemaTypeValue(&schemaType)
 	/*
-		rve := reflect.ValueOf(schemaType).Elem()
+		rve := reflect.ValueOf(schema).Elem()
 
 		// Index the struct
 		// TODO Consider replacing with structMetadata
@@ -50,9 +50,9 @@ func CreateTableFromType(db *sql.DB, table string, schemaType interface{}) error
 
 	// Build column  definitions
 	var columnDefinitions []string
-	for _, columnName := range sm.columnNames {
+	for _, columnName := range scm.columnNames {
 		var columnDefinition string
-		fieldType := sm.columnNameFieldKindMap[columnName]
+		fieldType := scm.columnNameFieldKindMap[columnName]
 		switch fieldType {
 		case reflect.Bool:
 			// Booleans are likely not key values so skip keyColumns switch
@@ -66,7 +66,7 @@ func CreateTableFromType(db *sql.DB, table string, schemaType interface{}) error
 			fallthrough
 
 		case reflect.Int32:
-			switch sm.columnKeyTypeMap[columnName] {
+			switch scm.columnKeyTypeMap[columnName] {
 			case "primarykey":
 				columnDefinition = columnName + " INTEGER PRIMARY KEY NOT NULL"
 			case "primarykey:serial":
@@ -78,7 +78,7 @@ func CreateTableFromType(db *sql.DB, table string, schemaType interface{}) error
 			}
 
 		case reflect.Int64:
-			switch sm.columnKeyTypeMap[columnName] {
+			switch scm.columnKeyTypeMap[columnName] {
 			case "primarykey":
 				columnDefinition = columnName + " BIGINT PRIMARY KEY NOT NULL"
 			case "primarykey:serial":
@@ -90,7 +90,7 @@ func CreateTableFromType(db *sql.DB, table string, schemaType interface{}) error
 			}
 
 		case reflect.String:
-			switch sm.columnKeyTypeMap[columnName] {
+			switch scm.columnKeyTypeMap[columnName] {
 			case "primarykey":
 				columnDefinition = columnName + " VARCHAR PRIMARY KEY NOT NULL"
 			case "primarykey:serial":
@@ -103,7 +103,7 @@ func CreateTableFromType(db *sql.DB, table string, schemaType interface{}) error
 			}
 
 		case reflect.TypeOf(time.Time{}).Kind():
-			switch sm.columnKeyTypeMap[columnName] {
+			switch scm.columnKeyTypeMap[columnName] {
 			case "primarykey":
 				columnDefinition = columnName + " TIMESTAMPTZ PRIMARY KEY NOT NULL"
 			case "primarykey:serial":

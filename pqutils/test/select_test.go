@@ -21,7 +21,7 @@ func TestSelectAll(t *testing.T) {
 		t.FailNow()
 	}
 
-	results, err := pqutils.SelectAll(db, "test_table", testType{})
+	results, err := pqutils.SelectAll(db, "test_table", &testType{})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
@@ -45,7 +45,7 @@ func TestSelectOne(t *testing.T) {
 	}
 
 	testQuery := testType{Id: 2}
-	result, err := pqutils.SelectOne(db, "test_table", testQuery)
+	result, err := pqutils.SelectOne(db, "test_table", &testQuery)
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
@@ -74,7 +74,7 @@ func TestSelectOneNoResult(t *testing.T) {
 		t.FailNow()
 	}
 
-	result, err := pqutils.SelectOne(db, "test_table", testType{Id: 99})
+	result, err := pqutils.SelectOne(db, "test_table", &testType{Id: 99})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
@@ -98,7 +98,7 @@ func TestSelectOneMultipleResults(t *testing.T) {
 		t.FailNow()
 	}
 
-	result, err := pqutils.SelectOne(db, "test_table", testType{LastName: "Smith"})
+	result, err := pqutils.SelectOne(db, "test_table", &testType{LastName: "Smith"})
 	if err == nil {
 		log.Println("expected: error condition for multiple results for SelectOne()")
 		t.FailNow()
@@ -121,7 +121,7 @@ func TestSelectAllWithOptions(t *testing.T) {
 		t.FailNow()
 	}
 
-	results, err := pqutils.SelectAllWithOptions(db, "test_table", testType{}, map[string]interface{}{"FirstName": "John"}, pqutils.QueryOptions{})
+	results, err := pqutils.SelectAllWithOptions(db, "test_table", &testType{}, map[string]interface{}{"FirstName": "John"}, pqutils.QueryOptions{})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()
