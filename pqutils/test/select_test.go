@@ -8,6 +8,32 @@ import (
 	"testing"
 )
 
+func TestCountAll(t *testing.T) {
+	config, err := configureTest()
+	if err != nil {
+		log.Println(err)
+		t.FailNow()
+	}
+
+	db, err := sql.Open("postgres", config.DbUrl)
+	if err != nil {
+		log.Println(err)
+		t.FailNow()
+	}
+
+	count, err := pqutils.CountAll(db, "test_table")
+	if err != nil {
+		log.Println(err)
+		t.FailNow()
+	}
+
+	if count == 0 {
+		log.Println("expected: count to be non-zero. Received:", count)
+	}
+
+	log.Println("Count:", count)
+}
+
 func TestSelectAll(t *testing.T) {
 	config, err := configureTest()
 	if err != nil {
@@ -144,8 +170,8 @@ func TestSelectAllWithFullOptions(t *testing.T) {
 
 	//lastName ASC 24 -1
 	results, err := pqutils.SelectAllWithOptions(db, "test_table", &testType{},
-		map[string]interface{}{"json:lastName": "Smith"}, pqutils.QueryOptions{
-			OrderByField:  "json:firstName",
+		map[string]interface{}{"json:firstName": "Greg"}, pqutils.QueryOptions{
+			OrderByField:  "json:id",
 			OrderByOption: pqutils.OrderByOptionAscending,
 			Limit:         24,
 			Offset:        -1,

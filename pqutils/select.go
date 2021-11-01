@@ -8,6 +8,34 @@ import (
 	"strings"
 )
 
+func CountAll(db *sql.DB, table string) (int, error) {
+	query := `SELECT COUNT(*) 
+		      FROM ` + table
+
+	// Execute the Query
+	ctx := context.Background()
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	row := conn.QueryRowContext(ctx, query)
+	if err != nil {
+		return 0, err
+	}
+
+	var count int
+	err = row.Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func SelectOne(db *sql.DB, table string, v interface{}) (interface{}, error) {
 	// Assumption: v is a pointer to a struct
 
