@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func InsertOne(db *sql.DB, table string, v interface{}) (sql.Result, error) {
+func InsertOne(db *sql.DB, table string, v interface{}) (interface{}, error) {
 	// Create the connection
 	ctx := context.Background()
 	conn, err := db.Conn(ctx)
@@ -24,12 +24,12 @@ func InsertOne(db *sql.DB, table string, v interface{}) (sql.Result, error) {
 	return insertOne(conn, ctx, table, v)
 }
 
-func InsertAll(db *sql.DB, table string, v []interface{}) ([]sql.Result, error) {
+func InsertAll(db *sql.DB, table string, v []interface{}) ([]interface{}, []error) {
 	// Create the connection
 	ctx := context.Background()
 	conn, err := db.Conn(ctx)
 	if err != nil {
-		return nil, err
+		return nil, []error{err}
 	}
 	defer func() {
 		_ = conn.Close()
@@ -37,17 +37,17 @@ func InsertAll(db *sql.DB, table string, v []interface{}) ([]sql.Result, error) 
 
 	// TODO there is no provision for insertAll in sql.  Should we interfere with
 	//   driver implementation and construct our own result?
-	var results []sql.Result
+	var results []interface{}
+	var errs []error
 	for _, value := range v {
 		result, err := insertOne(conn, ctx, table, value)
 		if err != nil {
-			// we will return the results up until this point
-			return results, err
+			errs = append(errs, err)
 		}
 		results = append(results, result)
 	}
 
-	return results, nil
+	return results, errs
 }
 
 func BulkInsert(db *sql.DB, table string, v []interface{}) error {
@@ -139,7 +139,7 @@ func BulkInsert(db *sql.DB, table string, v []interface{}) error {
 	return nil
 }
 
-func insertOne(conn *sql.Conn, ctx context.Context, table string, v interface{}) (sql.Result, error) {
+func insertOne(conn *sql.Conn, ctx context.Context, table string, v interface{}) (interface{}, error) {
 	// Assumption: v is a pointer to a struct
 
 	scm, err := parseSchemaMetadata(v)
@@ -170,13 +170,31 @@ func insertOne(conn *sql.Conn, ctx context.Context, table string, v interface{})
 	}
 
 	// TODO Figure out how to get pointers to the key fields then construct the query
-	//   to return the key fields.  Then augment v and return it??
+	//  to return the key fields.  Then augment v and return it??
+	//  but for now we will just assume that v has an id field and we will return
+	//  the created record as a struct
 
 	stmt := `INSERT INTO ` + table + `
              (` + strings.Join(stmtColumns, ", ") + `)
-		     VALUES (` + strings.Join(stmtValues, ", ") + `)`
-	//RETURNING `
+		     VALUES (` + strings.Join(stmtValues, ", ") + `) ` +
+		`RETURNING *`
 
 	// Execute the Statement
-	return conn.ExecContext(ctx, stmt)
+	rows, err := conn.QueryContext(ctx, stmt)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	var rowResult interface{}
+	for rows.Next() {
+		rowResult, err = unmarshalRowsResult(rows, v)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return rowResult, nil
 }
