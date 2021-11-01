@@ -64,18 +64,19 @@ func selectAllWithOptions(db *sql.DB, table string, schema interface{},
 
 	// TODO consider passing a context that allows for the setting of metadata to improve performance
 
-	sm, err := parseSchemaMetadata(schema)
+	scm, err := parseSchemaMetadata(schema)
 	if err != nil {
 		return nil, err
 	}
 
-	whereCondition, err := whereConditionString(schema, where)
+	condition, err := queryConditionString(schema, where, options)
 	if err != nil {
 		return nil, err
 	}
-	query := `SELECT ` + strings.Join(sm.columnNames, ", ") + `
+
+	query := `SELECT ` + strings.Join(scm.columnNames, ", ") + `
 		FROM ` + table + ` ` +
-		whereCondition + ` ` + options.String()
+		condition
 
 	// Execute the Query
 	ctx := context.Background()

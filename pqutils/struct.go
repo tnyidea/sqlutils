@@ -6,8 +6,10 @@ import (
 )
 
 type structMetadata struct {
-	fieldNames        []string
-	fieldNameValueMap map[string]interface{}
+	fieldNames           []string
+	fieldNameValueMap    map[string]interface{}
+	jsonNames            []string
+	jsonNameFieldNameMap map[string]string
 }
 
 // parseStructMetadata reutrns a structMetadata object for the passed value v
@@ -30,12 +32,23 @@ func parseStructMetadata(v interface{}) (structMetadata, error) {
 
 	rve := rv.Elem()
 	var sm structMetadata
-	sm.fieldNameValueMap = make(map[string]interface{})
 	for i := 0; i < rve.NumField(); i++ {
 		structField := rve.Type().Field(i)
 		fieldName := structField.Name
+
+		if sm.fieldNameValueMap == nil {
+			sm.fieldNameValueMap = make(map[string]interface{})
+		}
 		sm.fieldNames = append(sm.fieldNames, fieldName)
 		sm.fieldNameValueMap[fieldName] = rve.Field(i).Interface()
+
+		if jsonName := structField.Tag.Get("json"); jsonName != "" {
+			if sm.jsonNameFieldNameMap == nil {
+				sm.jsonNameFieldNameMap = make(map[string]string)
+			}
+			sm.jsonNames = append(sm.jsonNames, jsonName)
+			sm.jsonNameFieldNameMap[jsonName] = fieldName
+		}
 	}
 
 	return sm, nil

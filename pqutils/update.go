@@ -77,14 +77,14 @@ func updateAllWithOptions(db *sql.DB, table string, v interface{}, mask []string
 		stmtValues = append(stmtValues, "'"+fmt.Sprintf("%v", stm.fieldNameValueMap[fieldName])+"'")
 	}
 
-	whereCondition, err := whereConditionString(v, where)
+	condition, err := queryConditionString(v, where, QueryOptions{})
 	if err != nil {
 		return nil, err
 	}
 	stmt := `UPDATE ` + table + ` ` +
 		`SET (` + strings.Join(stmtColumns, ", ") + `) = ` +
 		`(` + strings.Join(stmtValues, ", ") + `) ` +
-		whereCondition
+		condition
 
 	// Execute the Statement
 	ctx := context.Background()

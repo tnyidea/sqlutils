@@ -36,7 +36,7 @@ func TestCreateTableFromType(t *testing.T) {
 	}
 	sort.Strings(tableColumnNames)
 
-	typeColumnNames, err := pqutils.GetSchemaColumnNames(&testType{})
+	typeColumnNames, err := pqutils.SchemaColumnNames(&testType{})
 	if err != nil {
 		log.Println(err)
 		t.FailNow()

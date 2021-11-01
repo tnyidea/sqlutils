@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func GetSchemaColumnNames(schema interface{}) ([]string, error) {
+func SchemaColumnNames(schema interface{}) ([]string, error) {
 	// Assumption: schema is pointer to a struct
 
 	sm, err := parseSchemaMetadata(schema)

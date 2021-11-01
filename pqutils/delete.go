@@ -55,7 +55,7 @@ func UnsafeDeleteAll(db *sql.DB, table string) (sql.Result, error) {
 func deleteAllWithOptions(db *sql.DB, table string, schema interface{}, where map[string]interface{}) (sql.Result, error) {
 	// Assumption: schema is a pointer to a struct
 
-	whereCondition, err := whereConditionString(schema, where)
+	whereCondition, err := queryConditionString(schema, where, QueryOptions{})
 	stmt := `DELETE FROM ` + table + ` ` + whereCondition
 
 	// Execute the Statement

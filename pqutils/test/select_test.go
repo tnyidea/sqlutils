@@ -128,3 +128,31 @@ func TestSelectAllWithOptions(t *testing.T) {
 	}
 	log.Println(results)
 }
+
+func TestSelectAllWithFullOptions(t *testing.T) {
+	config, err := configureTest()
+	if err != nil {
+		log.Println(err)
+		t.FailNow()
+	}
+
+	db, err := sql.Open("postgres", config.DbUrl)
+	if err != nil {
+		log.Println(err)
+		t.FailNow()
+	}
+
+	//lastName ASC 24 -1
+	results, err := pqutils.SelectAllWithOptions(db, "test_table", &testType{},
+		map[string]interface{}{"json:lastName": "Smith"}, pqutils.QueryOptions{
+			OrderByField:  "json:firstName",
+			OrderByOption: pqutils.OrderByOptionAscending,
+			Limit:         24,
+			Offset:        -1,
+		})
+	if err != nil {
+		log.Println(err)
+		t.FailNow()
+	}
+	log.Println(results)
+}

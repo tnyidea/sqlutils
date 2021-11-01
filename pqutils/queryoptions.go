@@ -11,30 +11,13 @@ const OrderByOptionAscending = "ASC"
 const OrderByOptionDescending = "DESC"
 
 type QueryOptions struct {
-	OrderByColumn string
+	OrderByField  string
 	OrderByOption string
 	Limit         int
 	Offset        int
 }
 
-func (p *QueryOptions) String() string {
-	var s string
-	if p.OrderByColumn != "" {
-		s += ` ORDER BY ` + p.OrderByColumn + " " + p.OrderByOption
-	}
-	if p.Limit > 0 {
-		s += ` LIMIT ` + strconv.Itoa(p.Limit)
-	}
-	if p.Offset > 0 {
-		s += ` OFFSET ` + strconv.Itoa(p.Offset)
-	}
-
-	return s
-}
-
-// Helpers
-
-func whereConditionString(schema interface{}, where map[string]interface{}) (string, error) {
+func queryConditionString(schema interface{}, where map[string]interface{}, options QueryOptions) (string, error) {
 	// Assumption: schema is a pointer to a struct
 
 	if where == nil {
@@ -45,10 +28,18 @@ func whereConditionString(schema interface{}, where map[string]interface{}) (str
 	if err != nil {
 		return "", err
 	}
+	stm, err := parseStructMetadata(schema)
+	if err != nil {
+		return "", err
+	}
 
+	var conditionString string
 	var conditionValues []string
 	for fieldName, fieldValue := range where {
 		if fieldValue != "" {
+			if strings.HasPrefix(fieldName, "json:") {
+				fieldName = stm.jsonNameFieldNameMap[strings.TrimPrefix(fieldName, "json:")]
+			}
 			columnName := scm.fieldNameColumnNameMap[fieldName]
 			fieldKind := scm.columnNameFieldKindMap[columnName]
 			var condition string
@@ -62,8 +53,24 @@ func whereConditionString(schema interface{}, where map[string]interface{}) (str
 	}
 
 	if conditionValues != nil {
-		return " WHERE " + strings.Join(conditionValues, " AND "), nil
+		conditionString = "WHERE " + strings.Join(conditionValues, " AND ")
 	}
 
-	return "", nil
+	var optionsString string
+	if options.OrderByField != "" {
+		fieldName := options.OrderByField
+		if strings.HasPrefix(fieldName, "json:") {
+			fieldName = stm.jsonNameFieldNameMap[strings.TrimPrefix(fieldName, "json:")]
+		}
+		columnName := scm.fieldNameColumnNameMap[fieldName]
+		optionsString += ` ORDER BY ` + columnName + " " + options.OrderByOption
+	}
+	if options.Limit > 0 {
+		optionsString += ` LIMIT ` + strconv.Itoa(options.Limit)
+	}
+	if options.Offset > 0 {
+		optionsString += ` OFFSET ` + strconv.Itoa(options.Offset)
+	}
+
+	return conditionString + optionsString, nil
 }
