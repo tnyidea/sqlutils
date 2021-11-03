@@ -1,4 +1,4 @@
-module github.com/gbnyc26/sqlutils
+module github.com/tnyidea/sqlutils
 
 go 1.17
 

@@ -2,7 +2,7 @@ package test
 
 import (
 	"database/sql"
-	"github.com/gbnyc26/sqlutils/pqutils"
+	"github.com/tnyidea/sqlutils/pqutils"
 	"log"
 	"testing"
 )
