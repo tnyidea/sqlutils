@@ -171,10 +171,9 @@ func TestSelectAllWithFullOptions(t *testing.T) {
 	//lastName ASC 24 -1
 	results, err := pqutils.SelectAllWithOptions(db, "test_table", &testType{},
 		map[string]interface{}{"json:firstName": "Greg"}, pqutils.QueryOptions{
-			OrderByField:  "json:id",
-			OrderByOption: pqutils.OrderByOptionAscending,
-			Limit:         24,
-			Offset:        -1,
+			OrderBy: []string{"json:id:asc"},
+			Limit:   24,
+			Offset:  -1,
 		})
 	if err != nil {
 		log.Println(err)
